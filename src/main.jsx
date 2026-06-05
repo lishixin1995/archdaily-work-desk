@@ -1,743 +1,957 @@
-import React, { useMemo, useState } from 'react';
-import { createRoot } from 'react-dom/client';
-import './styles.css';
+import React, { useEffect, useMemo, useState } from "react";
+import { createRoot } from "react-dom/client";
+import "./styles.css";
 
-const STORAGE_KEYS = {
-  tasks: 'archDailyWorkDesk.tasks.v2',
-  daily: 'archDailyWorkDesk.dailyTaskLog.v2',
-  dob: 'archDailyWorkDesk.dobNotes.v2',
-  prompts: 'archDailyWorkDesk.aiPromptLibrary.v2',
-  revit: 'archDailyWorkDesk.revitTroubleShoot.v2',
+const STORAGE_KEY = "arch-daily-work-desk-v1";
+const STATUS_COLUMNS = ["Not Started", "In Progress", "Waiting", "Done"];
+const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
+const FOCUS_COLUMNS = ["Urgent", "High", "In Progress", "Waiting", "Planned"];
+const TABS = ["Dashboard", "Daily Task Log", "DOB Notes", "AI Prompt Library", "Revit Trouble Shoot"];
+
+const defaultData = {
+  dailyLogs: [],
+  tasks: [],
+  codeNotes: [],
+  revitLogs: [],
+  prompts: []
 };
 
-const olderStorageKeys = {
-  tasks: ['archDailyWorkDesk.tasks', 'tasks', 'dashboardTasks'],
-  daily: ['archDailyWorkDesk.dailyTaskLog', 'dailyTaskLog'],
-  dob: ['archDailyWorkDesk.dobNotes', 'dobNotes', 'quickNotes'],
-  prompts: ['archDailyWorkDesk.aiPromptLibrary', 'aiPromptLibrary', 'promptLog'],
-  revit: ['archDailyWorkDesk.revitTroubleShoot', 'revitTroubleShoot'],
-};
+function uid() {
+  if (window.crypto?.randomUUID) return window.crypto.randomUUID();
+  return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
 
-const STATUS_COLUMNS = ['Not Started', 'In Progress', 'Waiting', 'Done'];
-const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
-const TABS = ['Dashboard', 'Daily Task Log', 'DOB Notes', 'AI Prompt Library', 'Revit Trouble Shoot'];
-
-const todayISO = () => new Date().toISOString().slice(0, 10);
-const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
-function safeParse(value, fallback) {
+function parseJson(raw, fallback) {
   try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed : fallback;
+    const parsed = JSON.parse(raw);
+    return parsed ?? fallback;
   } catch {
     return fallback;
   }
 }
 
-function readStorage(primaryKey, legacyKeys = []) {
-  const primary = localStorage.getItem(primaryKey);
-  if (primary) return safeParse(primary, []);
-  for (const key of legacyKeys) {
-    const legacy = localStorage.getItem(key);
-    if (legacy) return safeParse(legacy, []);
-  }
+function readArrayKey(key) {
+  const raw = localStorage.getItem(key);
+  if (!raw) return [];
+  const parsed = parseJson(raw, []);
+  if (Array.isArray(parsed)) return parsed;
+  if (Array.isArray(parsed.items)) return parsed.items;
+  if (Array.isArray(parsed.data)) return parsed.data;
   return [];
 }
 
-function useLocalArray(storageKey, legacyKeys = []) {
-  const [items, setItems] = useState(() => readStorage(storageKey, legacyKeys));
-  const save = (next) => {
-    const value = typeof next === 'function' ? next(items) : next;
-    setItems(value);
-    localStorage.setItem(storageKey, JSON.stringify(value));
+function normalizeTask(task = {}) {
+  return {
+    id: task.id || uid(),
+    title: task.title || task.taskTitle || task.name || "Untitled Task",
+    project: task.project || "",
+    startDate: task.startDate || task.date || task.dueDate || "",
+    dueDate: task.dueDate || task.date || task.startDate || "",
+    status: STATUS_COLUMNS.includes(task.status) ? task.status : "Not Started",
+    priority: PRIORITIES.includes(task.priority) ? task.priority : "Medium",
+    notes: task.notes || task.details || task.content || task.description || "",
+    createdAt: task.createdAt || new Date().toISOString()
   };
-  return [items, save];
 }
 
-function formatDate(value) {
-  if (!value) return 'No date';
-  const d = new Date(`${value}T00:00:00`);
-  if (Number.isNaN(d.getTime())) return value;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+function normalizeDailyLog(log = {}) {
+  return {
+    id: log.id || uid(),
+    date: log.date || formatDate(new Date()),
+    project: log.project || "",
+    summary: log.summary || log.title || "Daily Log",
+    notes: log.notes || log.content || log.text || log.body || "",
+    createdAt: log.createdAt || new Date().toISOString()
+  };
 }
 
-function isBetween(date, start, end) {
-  const current = new Date(`${date}T00:00:00`).getTime();
-  const a = new Date(`${start || end || date}T00:00:00`).getTime();
-  const b = new Date(`${end || start || date}T00:00:00`).getTime();
-  return current >= Math.min(a, b) && current <= Math.max(a, b);
+function normalizeCodeNote(note = {}) {
+  return {
+    id: note.id || uid(),
+    title: note.title || note.subject || note.code || "DOB Note",
+    category: note.category || note.type || "General",
+    code: note.code || note.section || "",
+    notes: note.notes || note.content || note.details || note.text || "",
+    createdAt: note.createdAt || new Date().toISOString()
+  };
 }
 
-function sortByPriority(items) {
-  const weight = { Urgent: 0, High: 1, Medium: 2, Low: 3 };
-  return [...items].sort((a, b) => (weight[a.priority] ?? 9) - (weight[b.priority] ?? 9));
+function normalizePrompt(prompt = {}) {
+  return {
+    id: prompt.id || uid(),
+    title: prompt.title || prompt.promptTitle || prompt.name || "AI Prompt",
+    category: prompt.category || prompt.type || "General",
+    prompt: prompt.prompt || prompt.content || prompt.notes || prompt.text || "",
+    favorite: Boolean(prompt.favorite || prompt.isFavorite),
+    createdAt: prompt.createdAt || new Date().toISOString()
+  };
 }
 
-function Field({ label, children }) {
+function normalizeRevit(log = {}) {
+  return {
+    id: log.id || uid(),
+    issue: log.issue || log.title || log.name || "Revit Issue",
+    project: log.project || "",
+    category: log.category || log.type || "General",
+    problem: log.problem || log.description || log.notes || "",
+    solution: log.solution || log.content || log.details || "",
+    status: log.status || "Open",
+    createdAt: log.createdAt || new Date().toISOString()
+  };
+}
+
+function mergeUnique(base, incoming) {
+  const seen = new Set(base.map((item) => item.id));
+  const merged = [...base];
+  incoming.forEach((item) => {
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      merged.push(item);
+    }
+  });
+  return merged;
+}
+
+function migrateSplitStorage(data) {
+  const migrated = { ...data };
+  migrated.tasks = mergeUnique(migrated.tasks, [
+    ...readArrayKey("archDailyWorkDesk.tasks.v2"),
+    ...readArrayKey("archDailyWorkDesk.tasks"),
+    ...readArrayKey("tasks"),
+    ...readArrayKey("dashboardTasks")
+  ].map(normalizeTask));
+  migrated.dailyLogs = mergeUnique(migrated.dailyLogs, [
+    ...readArrayKey("archDailyWorkDesk.dailyTaskLog.v2"),
+    ...readArrayKey("archDailyWorkDesk.dailyTaskLog"),
+    ...readArrayKey("dailyTaskLog")
+  ].map(normalizeDailyLog));
+  migrated.codeNotes = mergeUnique(migrated.codeNotes, [
+    ...readArrayKey("archDailyWorkDesk.dobNotes.v2"),
+    ...readArrayKey("archDailyWorkDesk.dobNotes"),
+    ...readArrayKey("dobNotes"),
+    ...readArrayKey("quickNotes")
+  ].map(normalizeCodeNote));
+  migrated.prompts = mergeUnique(migrated.prompts, [
+    ...readArrayKey("archDailyWorkDesk.aiPromptLibrary.v2"),
+    ...readArrayKey("archDailyWorkDesk.aiPromptLibrary"),
+    ...readArrayKey("aiPromptLibrary"),
+    ...readArrayKey("promptLog")
+  ].map(normalizePrompt));
+  migrated.revitLogs = mergeUnique(migrated.revitLogs, [
+    ...readArrayKey("archDailyWorkDesk.revitTroubleShoot.v2"),
+    ...readArrayKey("archDailyWorkDesk.revitTroubleShoot"),
+    ...readArrayKey("revitTroubleShoot")
+  ].map(normalizeRevit));
+  return migrated;
+}
+
+function loadData() {
+  const saved = parseJson(localStorage.getItem(STORAGE_KEY), null);
+  const data = saved && typeof saved === "object" ? { ...defaultData, ...saved } : { ...defaultData };
+  const normalized = {
+    dailyLogs: Array.isArray(data.dailyLogs) ? data.dailyLogs.map(normalizeDailyLog) : [],
+    tasks: Array.isArray(data.tasks) ? data.tasks.map(normalizeTask) : [],
+    codeNotes: Array.isArray(data.codeNotes) ? data.codeNotes.map(normalizeCodeNote) : [],
+    revitLogs: Array.isArray(data.revitLogs) ? data.revitLogs.map(normalizeRevit) : [],
+    prompts: Array.isArray(data.prompts) ? data.prompts.map(normalizePrompt) : []
+  };
+  return migrateSplitStorage(normalized);
+}
+
+function saveData(data) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
+
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function todayKey() {
+  return formatDate(new Date());
+}
+
+function parseLocalDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = String(dateString).split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
+}
+
+function monthLabel(date) {
+  return date.toLocaleString(undefined, { month: "long", year: "numeric" });
+}
+
+function shortDate(value) {
+  if (!value) return "—";
+  const date = parseLocalDate(value);
+  if (!date) return value;
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function getTaskDateKeys(task) {
+  const start = parseLocalDate(task.startDate || task.dueDate);
+  const end = parseLocalDate(task.dueDate || task.startDate);
+  if (!start || !end) return [];
+  const from = start <= end ? start : end;
+  const to = start <= end ? end : start;
+  const keys = [];
+  let cursor = new Date(from);
+  let guard = 0;
+  while (cursor <= to && guard < 370) {
+    keys.push(formatDate(cursor));
+    cursor = addDays(cursor, 1);
+    guard += 1;
+  }
+  return keys;
+}
+
+function getTaskDateLabel(task) {
+  if (task.startDate && task.dueDate && task.startDate !== task.dueDate) return `${task.startDate} → ${task.dueDate}`;
+  return task.dueDate || task.startDate || "No date";
+}
+
+function getTaskTone(task) {
+  if (task.status === "Done") return "done";
+  if (task.priority === "Urgent") return "urgent";
+  if (task.priority === "High") return "high";
+  if (task.status === "In Progress") return "progress";
+  if (task.status === "Waiting") return "waiting";
+  return "planned";
+}
+
+function getTaskProjectAccent(task) {
+  const source = task.project || task.title || "";
+  let hash = 0;
+  for (let i = 0; i < source.length; i += 1) hash = source.charCodeAt(i) + ((hash << 5) - hash);
+  return `projectAccent${Math.abs(hash) % 6}`;
+}
+
+function getTaskUrgencyRank(task) {
+  if (task.status === "Done") return 99;
+  if (task.priority === "Urgent") return 0;
+  if (task.priority === "High") return 1;
+  if (task.status === "In Progress") return 2;
+  if (task.status === "Waiting") return 3;
+  if (task.priority === "Medium") return 4;
+  return 5;
+}
+
+function sortFocusTasks(tasks) {
+  return [...tasks].sort((a, b) => {
+    const rank = getTaskUrgencyRank(a) - getTaskUrgencyRank(b);
+    if (rank !== 0) return rank;
+    const aDue = a.dueDate || a.startDate || "9999-12-31";
+    const bDue = b.dueDate || b.startDate || "9999-12-31";
+    const dateCompare = aDue.localeCompare(bDue);
+    if (dateCompare !== 0) return dateCompare;
+    return (a.title || "").localeCompare(b.title || "");
+  });
+}
+
+function getFocusColumn(task) {
+  if (task.priority === "Urgent") return "Urgent";
+  if (task.priority === "High") return "High";
+  if (task.status === "In Progress") return "In Progress";
+  if (task.status === "Waiting") return "Waiting";
+  return "Planned";
+}
+
+function getMonthWeeks(currentDate) {
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const first = new Date(year, month, 1);
+  const start = addDays(first, -first.getDay());
+  return Array.from({ length: 42 }, (_, index) => addDays(start, index));
+}
+
+function getWeekDays(date) {
+  const start = addDays(date, -date.getDay());
+  return Array.from({ length: 7 }, (_, index) => addDays(start, index));
+}
+
+function matchesSearch(text, query) {
+  if (!query.trim()) return true;
+  return String(text || "").toLowerCase().includes(query.trim().toLowerCase());
+}
+
+function App() {
+  const [data, setDataState] = useState(loadData);
+  const [activeTab, setActiveTab] = useState("Dashboard");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [calendarView, setCalendarView] = useState("Month");
+
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentDate(new Date()), 60 * 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  function setData(next) {
+    const value = typeof next === "function" ? next(data) : next;
+    setDataState(value);
+    saveData(value);
+  }
+
   return (
-    <label className="field">
-      <span>{label}</span>
-      {children}
-    </label>
+    <div className="pageShell">
+      <header className="topBar">
+        <div className="brandMark">A</div>
+        <div className="brandText">
+          <strong>ARCH DAILY WORK DESK</strong>
+          <span>notes · tasks · code memory</span>
+        </div>
+        <nav className="tabNav" aria-label="Main sections">
+          {TABS.map((tab) => (
+            <button key={tab} type="button" className={activeTab === tab ? "active" : ""} onClick={() => setActiveTab(tab)}>{tab}</button>
+          ))}
+        </nav>
+      </header>
+
+      <main className="mainShell">
+        {activeTab === "Dashboard" ? (
+          <div className="dashboardGrid">
+            <TaskDashboard data={data} setData={setData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
+            <CalendarPanel
+              currentDate={currentDate}
+              calendarDate={calendarDate}
+              setCalendarDate={setCalendarDate}
+              calendarView={calendarView}
+              setCalendarView={setCalendarView}
+              tasks={data.tasks}
+              dailyLogs={data.dailyLogs}
+            />
+          </div>
+        ) : (
+          <section className="sectionPage">
+            <PageTitle tab={activeTab} />
+            {activeTab === "Daily Task Log" && <DailyTaskLog data={data} setData={setData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+            {activeTab === "DOB Notes" && <DOBNotes data={data} setData={setData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+            {activeTab === "AI Prompt Library" && <PromptLibrary data={data} setData={setData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+            {activeTab === "Revit Trouble Shoot" && <RevitTroubleShoot data={data} setData={setData} searchQuery={searchQuery} setSearchQuery={setSearchQuery} />}
+          </section>
+        )}
+      </main>
+    </div>
   );
 }
 
-function Button({ children, variant = 'primary', className = '', ...props }) {
+function PageTitle({ tab }) {
+  const descriptions = {
+    "Daily Task Log": "Record what happened today, then open any card to read the full notes.",
+    "DOB Notes": "Keep code, zoning, DOB, and quick reference notes searchable and readable.",
+    "AI Prompt Library": "Save project prompts and open the full prompt whenever you need it.",
+    "Revit Trouble Shoot": "Track Revit problems, causes, and solutions for future use."
+  };
   return (
-    <button className={`btn ${variant} ${className}`} {...props}>
-      {children}
-    </button>
+    <div className="pageTitle">
+      <p className="eyebrow">ARCH DAILY WORK DESK</p>
+      <h1>{tab}</h1>
+      <p>{descriptions[tab]}</p>
+    </div>
+  );
+}
+
+function SectionSearch({ value, onChange, placeholder = "Search notes..." }) {
+  return (
+    <div className="searchBar">
+      <input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} />
+    </div>
   );
 }
 
 function EmptyState({ children }) {
-  return <div className="empty-state">{children}</div>;
+  return <div className="empty">{children}</div>;
 }
 
-function DetailModal({ open, title, eyebrow, children, footer, onClose }) {
-  if (!open) return null;
+function FullDetailModal({ eyebrow = "Full Notes", title, subtitle, meta = [], sections = [], copyText, onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  async function copyFullText() {
+    try {
+      await navigator.clipboard.writeText(copyText || sections.map((section) => `${section.title}\n${section.body}`).join("\n\n"));
+    } catch {
+      // Clipboard may be unavailable in preview mode.
+    }
+  }
 
   return (
-    <div className="modal-backdrop" onMouseDown={onClose}>
-      <section className="detail-modal" onMouseDown={(event) => event.stopPropagation()}>
-        <div className="modal-header">
+    <div className="modalOverlay" onClick={onClose}>
+      <article className="detailModal" onClick={(event) => event.stopPropagation()}>
+        <div className="modalTop">
           <div>
-            {eyebrow && <p className="modal-eyebrow">{eyebrow}</p>}
-            <h2>{title || 'Full notes'}</h2>
+            <p className="eyebrow">{eyebrow}</p>
+            <h2>{title || "Full notes"}</h2>
+            {subtitle && <p className="modalDate">{subtitle}</p>}
           </div>
-          <button className="modal-close" aria-label="Close" onClick={onClose}>×</button>
+          <button type="button" className="modalClose" onClick={onClose}>×</button>
         </div>
-        <div className="modal-body">{children}</div>
-        {footer && <div className="modal-footer">{footer}</div>}
-      </section>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }) {
-  if (!value) return null;
-  return (
-    <div className="detail-row">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function FullText({ label, value }) {
-  return (
-    <div className="full-text-block">
-      <h3>{label}</h3>
-      <div className="full-text">{value || 'No notes yet.'}</div>
-    </div>
-  );
-}
-
-function PreviewCard({ title, meta, badge, text, onOpen, children, className = '' }) {
-  return (
-    <article className={`preview-card ${className}`} onClick={onOpen} tabIndex={0} onKeyDown={(event) => {
-      if (event.key === 'Enter' || event.key === ' ') onOpen?.();
-    }}>
-      <div className="card-topline">
-        {badge && <span className={`pill ${String(badge).toLowerCase().replaceAll(' ', '-')}`}>{badge}</span>}
-        {meta && <span className="card-meta">{meta}</span>}
-      </div>
-      <h3>{title || 'Untitled'}</h3>
-      {text && <p className="line-clamp">{text}</p>}
-      {children && <div className="card-actions" onClick={(event) => event.stopPropagation()}>{children}</div>}
-    </article>
-  );
-}
-
-function SectionHeader({ title, subtitle }) {
-  return (
-    <header className="section-header">
-      <div>
-        <p className="section-kicker">ARCH DAILY WORK DESK</p>
-        <h1>{title}</h1>
-        {subtitle && <p>{subtitle}</p>}
-      </div>
-    </header>
-  );
-}
-
-function TopNav({ activeTab, setActiveTab }) {
-  return (
-    <nav className="top-nav">
-      <div className="brand">
-        <span className="brand-mark">A</span>
-        <div>
-          <strong>ARCH DAILY WORK DESK</strong>
-          <small>notes · tasks · code memory</small>
-        </div>
-      </div>
-      <div className="tab-row">
-        {TABS.map((tab) => (
-          <button key={tab} className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>
-            {tab}
-          </button>
-        ))}
-      </div>
-    </nav>
-  );
-}
-
-function useTaskForm() {
-  const [form, setForm] = useState({
-    title: '',
-    project: '',
-    priority: 'Medium',
-    status: 'Not Started',
-    startDate: todayISO(),
-    dueDate: todayISO(),
-    notes: '',
-  });
-  const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
-  const reset = () => setForm({
-    title: '',
-    project: '',
-    priority: 'Medium',
-    status: 'Not Started',
-    startDate: todayISO(),
-    dueDate: todayISO(),
-    notes: '',
-  });
-  return { form, set, reset };
-}
-
-function Dashboard({ tasks, setTasks }) {
-  const { form, set, reset } = useTaskForm();
-  const [projectFilter, setProjectFilter] = useState('All');
-  const [priorityFilter, setPriorityFilter] = useState('All');
-  const [hideDone, setHideDone] = useState(false);
-  const [selectedTask, setSelectedTask] = useState(null);
-
-  const projects = useMemo(() => ['All', ...Array.from(new Set(tasks.map((t) => t.project).filter(Boolean)))], [tasks]);
-
-  const filteredTasks = useMemo(() => tasks.filter((task) => {
-    if (projectFilter !== 'All' && task.project !== projectFilter) return false;
-    if (priorityFilter !== 'All' && task.priority !== priorityFilter) return false;
-    if (hideDone && task.status === 'Done') return false;
-    return true;
-  }), [tasks, projectFilter, priorityFilter, hideDone]);
-
-  const addTask = (event) => {
-    event.preventDefault();
-    if (!form.title.trim() && !form.notes.trim()) return;
-    const nextTask = {
-      id: uid(),
-      createdAt: new Date().toISOString(),
-      title: form.title.trim() || 'Untitled Task',
-      project: form.project.trim(),
-      priority: form.priority,
-      status: form.status,
-      startDate: form.startDate,
-      dueDate: form.dueDate,
-      notes: form.notes.trim(),
-    };
-    setTasks([nextTask, ...tasks]);
-    reset();
-  };
-
-  const updateStatus = (id, status) => {
-    setTasks(tasks.map((task) => task.id === id ? { ...task, status } : task));
-  };
-
-  const deleteTask = (id) => {
-    setTasks(tasks.filter((task) => task.id !== id));
-    setSelectedTask(null);
-  };
-
-  return (
-    <>
-      <div className="dashboard-grid">
-        <main>
-          <SectionHeader
-            title="Task Dashboard"
-            subtitle="Compact cards stay clean. Open any card to read the full notes/details."
-          />
-
-          <form className="panel task-form" onSubmit={addTask}>
-            <div className="form-grid four">
-              <Field label="Task title">
-                <input value={form.title} onChange={(e) => set('title', e.target.value)} placeholder="Fix revit model and facade skeleton set" />
-              </Field>
-              <Field label="Project">
-                <input value={form.project} onChange={(e) => set('project', e.target.value)} placeholder="2421 - 1587 3rd Ave" />
-              </Field>
-              <Field label="Start date">
-                <input type="date" value={form.startDate} onChange={(e) => set('startDate', e.target.value)} />
-              </Field>
-              <Field label="Due date">
-                <input type="date" value={form.dueDate} onChange={(e) => set('dueDate', e.target.value)} />
-              </Field>
-              <Field label="Priority">
-                <select value={form.priority} onChange={(e) => set('priority', e.target.value)}>
-                  {PRIORITIES.map((priority) => <option key={priority}>{priority}</option>)}
-                </select>
-              </Field>
-              <Field label="Status">
-                <select value={form.status} onChange={(e) => set('status', e.target.value)}>
-                  {STATUS_COLUMNS.map((status) => <option key={status}>{status}</option>)}
-                </select>
-              </Field>
-              <Field label="Task notes / details">
-                <textarea value={form.notes} onChange={(e) => set('notes', e.target.value)} placeholder="What needs attention? What should I remember when I open this task?" />
-              </Field>
-            </div>
-            <Button type="submit" className="wide">Add Task</Button>
-          </form>
-
-          <div className="panel filters">
-            <Field label="Project filter">
-              <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
-                {projects.map((project) => <option key={project}>{project}</option>)}
-              </select>
-            </Field>
-            <Field label="Priority filter">
-              <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
-                {['All', ...PRIORITIES].map((priority) => <option key={priority}>{priority}</option>)}
-              </select>
-            </Field>
-            <label className="checkbox-line">
-              <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} />
-              Hide Done
-            </label>
-          </div>
-
-          <div className="board">
-            {STATUS_COLUMNS.map((status) => {
-              const columnTasks = sortByPriority(filteredTasks.filter((task) => task.status === status));
-              return (
-                <section className="board-column" key={status}>
-                  <h2>{status}</h2>
-                  {columnTasks.length === 0 && <EmptyState>No tasks here yet.</EmptyState>}
-                  <div className="card-stack">
-                    {columnTasks.map((task) => (
-                      <PreviewCard
-                        key={task.id}
-                        title={task.title}
-                        meta={`${task.startDate || 'No start'} → ${task.dueDate || 'No due'}`}
-                        badge={task.priority}
-                        text={`${task.project ? `${task.project}\n` : ''}${task.notes || ''}`}
-                        onOpen={() => setSelectedTask(task)}
-                      >
-                        <select value={task.status} onChange={(e) => updateStatus(task.id, e.target.value)}>
-                          {STATUS_COLUMNS.map((option) => <option key={option}>{option}</option>)}
-                        </select>
-                        <Button variant="ghost-danger" onClick={() => deleteTask(task.id)}>Delete</Button>
-                      </PreviewCard>
-                    ))}
-                  </div>
-                </section>
-              );
-            })}
-          </div>
-        </main>
-        <PinnedCalendar tasks={tasks} onOpenTask={setSelectedTask} />
-      </div>
-
-      <TaskModal task={selectedTask} onClose={() => setSelectedTask(null)} onDelete={deleteTask} />
-    </>
-  );
-}
-
-function TaskModal({ task, onClose, onDelete }) {
-  return (
-    <DetailModal
-      open={!!task}
-      title={task?.title}
-      eyebrow="Task details"
-      onClose={onClose}
-      footer={task && <Button variant="ghost-danger" onClick={() => onDelete(task.id)}>Delete task</Button>}
-    >
-      {task && (
-        <>
-          <div className="detail-grid">
-            <DetailRow label="Project" value={task.project || 'No project'} />
-            <DetailRow label="Priority" value={task.priority} />
-            <DetailRow label="Status" value={task.status} />
-            <DetailRow label="Start date" value={formatDate(task.startDate)} />
-            <DetailRow label="Due date" value={formatDate(task.dueDate)} />
-            <DetailRow label="Created" value={task.createdAt ? new Date(task.createdAt).toLocaleString() : ''} />
-          </div>
-          <FullText label="Full notes / details" value={task.notes} />
-        </>
-      )}
-    </DetailModal>
-  );
-}
-
-function PinnedCalendar({ tasks, onOpenTask }) {
-  const [view, setView] = useState('Month');
-  const [cursor, setCursor] = useState(() => new Date());
-  const today = todayISO();
-
-  const monthLabel = cursor.toLocaleString(undefined, { month: 'long', year: 'numeric' });
-  const year = cursor.getFullYear();
-  const month = cursor.getMonth();
-
-  const days = useMemo(() => {
-    const first = new Date(year, month, 1);
-    const start = new Date(first);
-    start.setDate(first.getDate() - first.getDay());
-    return Array.from({ length: 42 }, (_, index) => {
-      const d = new Date(start);
-      d.setDate(start.getDate() + index);
-      const iso = d.toISOString().slice(0, 10);
-      return { date: d, iso, inMonth: d.getMonth() === month };
-    });
-  }, [month, year]);
-
-  const changeMonth = (direction) => {
-    setCursor((prev) => new Date(prev.getFullYear(), prev.getMonth() + direction, 1));
-  };
-
-  const weekStart = useMemo(() => {
-    const d = new Date(`${today}T00:00:00`);
-    d.setDate(d.getDate() - d.getDay());
-    return d;
-  }, [today]);
-
-  const weekDays = useMemo(() => Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart);
-    d.setDate(weekStart.getDate() + i);
-    return d.toISOString().slice(0, 10);
-  }), [weekStart]);
-
-  const todayTasks = sortByPriority(tasks.filter((task) => isBetween(today, task.startDate, task.dueDate) && task.status !== 'Done'));
-  const weekTasks = sortByPriority(tasks.filter((task) => weekDays.some((day) => isBetween(day, task.startDate, task.dueDate)) && task.status !== 'Done'));
-
-  return (
-    <aside className="calendar-panel">
-      <div className="calendar-header">
-        <div>
-          <p>PINNED MONTHLY CALENDAR</p>
-          <h2>{monthLabel}</h2>
-          <span>Tasks stretch from start date to due date.</span>
-        </div>
-        <button className="round-btn" onClick={() => changeMonth(-1)}>←</button>
-        <button className="round-btn" onClick={() => changeMonth(1)}>→</button>
-      </div>
-
-      <div className="segmented">
-        {['Today', 'Week', 'Month'].map((item) => (
-          <button key={item} className={view === item ? 'active' : ''} onClick={() => setView(item)}>{item}</button>
-        ))}
-      </div>
-
-      <div className="legend">
-        <span><i className="dot planned" /> Planned</span>
-        <span><i className="dot progress" /> In progress</span>
-        <span><i className="dot urgent" /> Urgent</span>
-      </div>
-
-      {view === 'Month' && (
-        <div className="month-view">
-          {['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'].map((day) => <b key={day}>{day}</b>)}
-          {days.map((day) => {
-            const dayTasks = tasks.filter((task) => isBetween(day.iso, task.startDate, task.dueDate));
-            return (
-              <div key={day.iso} className={`day-cell ${!day.inMonth ? 'muted' : ''} ${day.iso === today ? 'today' : ''}`}>
-                <strong>{day.date.getDate()}</strong>
-                <div className="mini-bars">
-                  {sortByPriority(dayTasks).slice(0, 3).map((task) => (
-                    <button key={task.id} className={`task-bar ${task.priority === 'Urgent' ? 'urgent' : task.status === 'In Progress' ? 'progress' : 'planned'}`} onClick={() => onOpenTask(task)}>
-                      {task.title}
-                    </button>
-                  ))}
-                  {dayTasks.length > 3 && <span className="more-count">+{dayTasks.length - 3}</span>}
-                </div>
+        {meta.length > 0 && (
+          <div className="detailGrid">
+            {meta.map(([label, value]) => value ? (
+              <div key={label} className="detailStat">
+                <span>{label}</span>
+                <strong>{value}</strong>
               </div>
-            );
-          })}
-        </div>
-      )}
-
-      {view === 'Today' && (
-        <div className="agenda-view">
-          <h3>Today · {formatDate(today)}</h3>
-          {todayTasks.length === 0 && <EmptyState>No active tasks for today.</EmptyState>}
-          {todayTasks.map((task) => (
-            <button key={task.id} className="agenda-item" onClick={() => onOpenTask(task)}>
-              <span className={`pill ${task.priority.toLowerCase()}`}>{task.priority}</span>
-              <strong>{task.title}</strong>
-              <small>{task.project || 'No project'} · {task.status}</small>
-            </button>
+            ) : null)}
+          </div>
+        )}
+        <div className="modalBody">
+          {sections.map((section) => (
+            <section className="modalSection" key={section.title}>
+              <h3>{section.title}</h3>
+              <p>{section.body || "No notes yet."}</p>
+            </section>
           ))}
         </div>
-      )}
-
-      {view === 'Week' && (
-        <div className="agenda-view">
-          <h3>This Week · urgent first</h3>
-          {weekTasks.length === 0 && <EmptyState>No active tasks this week.</EmptyState>}
-          {weekTasks.map((task) => (
-            <button key={task.id} className="agenda-item" onClick={() => onOpenTask(task)}>
-              <span className={`pill ${task.priority.toLowerCase()}`}>{task.priority}</span>
-              <strong>{task.title}</strong>
-              <small>{formatDate(task.startDate)} → {formatDate(task.dueDate)}</small>
-            </button>
-          ))}
+        <div className="modalActions">
+          <button type="button" onClick={copyFullText}>Copy full text</button>
+          <button type="button" className="primary" onClick={onClose}>Done</button>
         </div>
+      </article>
+    </div>
+  );
+}
+
+function TaskDashboard({ data, setData, searchQuery, setSearchQuery }) {
+  const [form, setForm] = useState({
+    title: "",
+    project: "",
+    startDate: todayKey(),
+    dueDate: todayKey(),
+    status: "Not Started",
+    priority: "Medium",
+    notes: ""
+  });
+  const [projectFilter, setProjectFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [hideDone, setHideDone] = useState(false);
+  const [openTask, setOpenTask] = useState(null);
+
+  const projects = useMemo(() => {
+    const values = data.tasks.map((task) => task.project).filter(Boolean);
+    return ["All", ...Array.from(new Set(values)).sort()];
+  }, [data.tasks]);
+
+  const filteredTasks = useMemo(() => {
+    return data.tasks.filter((task) => {
+      if (projectFilter !== "All" && task.project !== projectFilter) return false;
+      if (priorityFilter !== "All" && task.priority !== priorityFilter) return false;
+      if (hideDone && task.status === "Done") return false;
+      return matchesSearch(`${task.title} ${task.project} ${task.notes}`, searchQuery);
+    });
+  }, [data.tasks, projectFilter, priorityFilter, hideDone, searchQuery]);
+
+  function addTask(event) {
+    event.preventDefault();
+    if (!form.title.trim()) return;
+    const nextTask = normalizeTask({ ...form, id: uid(), createdAt: new Date().toISOString() });
+    setData({ ...data, tasks: [nextTask, ...data.tasks] });
+    setForm({ title: "", project: form.project, startDate: todayKey(), dueDate: todayKey(), status: "Not Started", priority: "Medium", notes: "" });
+  }
+
+  function updateTask(id, patch) {
+    setData({ ...data, tasks: data.tasks.map((task) => task.id === id ? { ...task, ...patch } : task) });
+  }
+
+  function deleteTask(id) {
+    setData({ ...data, tasks: data.tasks.filter((task) => task.id !== id) });
+  }
+
+  return (
+    <section className="dashboardMain">
+      <div className="pageTitle compactTitle">
+        <p className="eyebrow">ARCH DAILY WORK DESK</p>
+        <h1>Task Dashboard</h1>
+        <p>Compact cards stay clean. Open any card to read the full notes/details.</p>
+      </div>
+
+      <form className="panel taskForm" onSubmit={addTask}>
+        <label>
+          Task title
+          <input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Fix revit model and facade skeleton set" />
+        </label>
+        <label>
+          Project
+          <input value={form.project} onChange={(event) => setForm({ ...form, project: event.target.value })} placeholder="2421 - 1587 3rd Ave" />
+        </label>
+        <label>
+          Start date
+          <input type="date" value={form.startDate} onChange={(event) => setForm({ ...form, startDate: event.target.value })} />
+        </label>
+        <label>
+          Due date
+          <input type="date" value={form.dueDate} onChange={(event) => setForm({ ...form, dueDate: event.target.value })} />
+        </label>
+        <label>
+          Priority
+          <select value={form.priority} onChange={(event) => setForm({ ...form, priority: event.target.value })}>
+            {PRIORITIES.map((priority) => <option key={priority}>{priority}</option>)}
+          </select>
+        </label>
+        <label>
+          Status
+          <select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}>
+            {STATUS_COLUMNS.map((status) => <option key={status}>{status}</option>)}
+          </select>
+        </label>
+        <label className="wide">
+          Task notes / details
+          <textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="What needs attention? What should I remember when I open this task?" />
+        </label>
+        <button type="submit" className="primary wide">Add Task</button>
+      </form>
+
+      <div className="panel filterPanel">
+        <label>
+          Project filter
+          <select value={projectFilter} onChange={(event) => setProjectFilter(event.target.value)}>
+            {projects.map((project) => <option key={project}>{project}</option>)}
+          </select>
+        </label>
+        <label>
+          Priority filter
+          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value)}>
+            <option>All</option>
+            {PRIORITIES.map((priority) => <option key={priority}>{priority}</option>)}
+          </select>
+        </label>
+        <label className="checkboxLabel">
+          <input type="checkbox" checked={hideDone} onChange={(event) => setHideDone(event.target.checked)} />
+          Hide Done
+        </label>
+        <SectionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search dashboard tasks..." />
+      </div>
+
+      <div className="kanbanBoard">
+        {STATUS_COLUMNS.map((column) => {
+          const columnTasks = filteredTasks.filter((task) => task.status === column);
+          return (
+            <section className="kanbanColumn" key={column}>
+              <h3>{column}</h3>
+              {columnTasks.length === 0 ? (
+                <EmptyState>No tasks here yet.</EmptyState>
+              ) : (
+                columnTasks.map((task) => (
+                  <article key={task.id} className={`taskCard ${getTaskTone(task)}`} onClick={() => setOpenTask(task)}>
+                    <span className="pill">{task.priority}</span>
+                    <span className="dateChip">{getTaskDateLabel(task)}</span>
+                    <h4>{task.title}</h4>
+                    {task.project && <p className="mutedText">{task.project}</p>}
+                    {task.notes && <p className="clampedText">{task.notes}</p>}
+                    <button type="button" className="viewButton" onClick={(event) => { event.stopPropagation(); setOpenTask(task); }}>View full notes</button>
+                    <select value={task.status} onClick={(event) => event.stopPropagation()} onChange={(event) => updateTask(task.id, { status: event.target.value })}>
+                      {STATUS_COLUMNS.map((status) => <option key={status}>{status}</option>)}
+                    </select>
+                    <button type="button" className="ghostButton" onClick={(event) => { event.stopPropagation(); deleteTask(task.id); }}>Delete</button>
+                  </article>
+                ))
+              )}
+            </section>
+          );
+        })}
+      </div>
+
+      {openTask && (
+        <FullDetailModal
+          eyebrow="Task Detail"
+          title={openTask.title}
+          subtitle={`${openTask.project || "No project"} · ${getTaskDateLabel(openTask)}`}
+          meta={[["Priority", openTask.priority], ["Status", openTask.status], ["Start", openTask.startDate || "—"], ["Due", openTask.dueDate || "—"]]}
+          sections={[{ title: "Task notes / details", body: openTask.notes || "No notes yet." }]}
+          onClose={() => setOpenTask(null)}
+        />
       )}
+    </section>
+  );
+}
+
+function CalendarPanel({ currentDate, calendarDate, setCalendarDate, calendarView, setCalendarView, tasks, dailyLogs }) {
+  function shift(amount) {
+    if (calendarView === "Week") setCalendarDate(addDays(calendarDate, amount * 7));
+    else if (calendarView === "Year") setCalendarDate(new Date(calendarDate.getFullYear() + amount, calendarDate.getMonth(), 1));
+    else setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + amount, 1));
+  }
+
+  return (
+    <aside className="calendarPanel">
+      <div className="calendarTop">
+        <div>
+          <p className="eyebrow">Pinned Monthly Calendar</p>
+          <h2>{calendarView === "Year" ? calendarDate.getFullYear() : calendarView === "Week" ? "This Week" : calendarView === "Today" ? "Today" : monthLabel(calendarDate)}</h2>
+          <p className="calendarHint">Tasks stretch from start date to due date.</p>
+          <div className="calendarLegend">
+            <span><i className="legendDot planned"></i>Planned</span>
+            <span><i className="legendDot progress"></i>In progress</span>
+            <span><i className="legendDot urgent"></i>Urgent</span>
+          </div>
+        </div>
+        <div className="calendarArrows">
+          <button type="button" onClick={() => shift(-1)}>←</button>
+          <button type="button" onClick={() => shift(1)}>→</button>
+        </div>
+      </div>
+      <div className="viewToggle">
+        {["Today", "Week", "Month", "Year"].map((view) => (
+          <button key={view} type="button" className={calendarView === view ? "active" : ""} onClick={() => setCalendarView(view)}>{view}</button>
+        ))}
+      </div>
+      {calendarView === "Today" && <TodayCalendarView currentDate={currentDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Week" && <WeekCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Month" && <MonthCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Year" && <YearCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
     </aside>
   );
 }
 
-function DailyTaskLog({ logs, setLogs }) {
-  const [form, setForm] = useState({ date: todayISO(), title: '', notes: '' });
-  const [selected, setSelected] = useState(null);
-
-  const add = (event) => {
-    event.preventDefault();
-    if (!form.title.trim() && !form.notes.trim()) return;
-    setLogs([{ id: uid(), createdAt: new Date().toISOString(), ...form, title: form.title.trim() || 'Daily log', notes: form.notes.trim() }, ...logs]);
-    setForm({ date: todayISO(), title: '', notes: '' });
-  };
-
-  const remove = (id) => {
-    setLogs(logs.filter((item) => item.id !== id));
-    setSelected(null);
-  };
-
+function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
+  const weeks = useMemo(() => getMonthWeeks(calendarDate), [calendarDate]);
+  const today = formatDate(currentDate);
+  const month = calendarDate.getMonth();
   return (
-    <main className="single-page">
-      <SectionHeader title="Daily Task Log" subtitle="Daily notes stay compact on the page and open full screen when needed." />
-      <form className="panel" onSubmit={add}>
-        <div className="form-grid three">
-          <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-          <Field label="Title"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="What happened today?" /></Field>
-          <Field label="Notes"><textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Paste all work notes here. Long notes can be opened later." /></Field>
-        </div>
-        <Button type="submit" className="wide">Save Daily Log</Button>
-      </form>
-      <CardGrid items={logs} render={(log) => (
-        <PreviewCard key={log.id} title={log.title} meta={formatDate(log.date)} badge="Daily" text={log.notes} onOpen={() => setSelected(log)}>
-          <Button variant="ghost-danger" onClick={() => remove(log.id)}>Delete</Button>
-        </PreviewCard>
-      )} />
-      <DetailModal open={!!selected} title={selected?.title} eyebrow={selected && formatDate(selected.date)} onClose={() => setSelected(null)} footer={selected && <Button variant="ghost-danger" onClick={() => remove(selected.id)}>Delete</Button>}>
-        {selected && <FullText label="Full daily notes" value={selected.notes} />}
-      </DetailModal>
-    </main>
-  );
-}
-
-function DOBNotes({ notes, setNotes }) {
-  const [form, setForm] = useState({ title: '', category: '', date: todayISO(), content: '' });
-  const [selected, setSelected] = useState(null);
-
-  const add = (event) => {
-    event.preventDefault();
-    if (!form.title.trim() && !form.content.trim()) return;
-    setNotes([{ id: uid(), createdAt: new Date().toISOString(), ...form, title: form.title.trim() || 'DOB Note', content: form.content.trim() }, ...notes]);
-    setForm({ title: '', category: '', date: todayISO(), content: '' });
-  };
-
-  const remove = (id) => {
-    setNotes(notes.filter((item) => item.id !== id));
-    setSelected(null);
-  };
-
-  return (
-    <main className="single-page">
-      <SectionHeader title="DOB Notes" subtitle="Quick DOB/code notes now open full detail views, so long text never gets trapped in a card." />
-      <form className="panel" onSubmit={add}>
-        <div className="form-grid three">
-          <Field label="Title"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="BC 1108 wheelchair seating" /></Field>
-          <Field label="Category"><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Accessibility / Egress / Zoning" /></Field>
-          <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-          <Field label="Full DOB note"><textarea value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Paste the code section, DOB comment, or office note here." /></Field>
-        </div>
-        <Button type="submit" className="wide">Save DOB Note</Button>
-      </form>
-      <CardGrid items={notes} render={(note) => (
-        <PreviewCard key={note.id} title={note.title} meta={formatDate(note.date)} badge={note.category || 'DOB'} text={note.content || note.notes} onOpen={() => setSelected(note)}>
-          <Button variant="ghost-danger" onClick={() => remove(note.id)}>Delete</Button>
-        </PreviewCard>
-      )} />
-      <DetailModal open={!!selected} title={selected?.title} eyebrow="DOB note" onClose={() => setSelected(null)} footer={selected && <Button variant="ghost-danger" onClick={() => remove(selected.id)}>Delete</Button>}>
-        {selected && (
-          <>
-            <div className="detail-grid">
-              <DetailRow label="Category" value={selected.category || 'DOB'} />
-              <DetailRow label="Date" value={formatDate(selected.date)} />
-            </div>
-            <FullText label="Full DOB notes" value={selected.content || selected.notes} />
-          </>
-        )}
-      </DetailModal>
-    </main>
-  );
-}
-
-function AIPromptLibrary({ prompts, setPrompts }) {
-  const [form, setForm] = useState({ title: '', category: '', date: todayISO(), prompt: '' });
-  const [selected, setSelected] = useState(null);
-  const [editingId, setEditingId] = useState(null);
-
-  const copyPrompt = async (text) => {
-    try {
-      await navigator.clipboard.writeText(text || '');
-    } catch {
-      const area = document.createElement('textarea');
-      area.value = text || '';
-      document.body.appendChild(area);
-      area.select();
-      document.execCommand('copy');
-      document.body.removeChild(area);
-    }
-  };
-
-  const addOrUpdate = (event) => {
-    event.preventDefault();
-    if (!form.title.trim() && !form.prompt.trim()) return;
-    if (editingId) {
-      setPrompts(prompts.map((item) => item.id === editingId ? { ...item, ...form, title: form.title.trim() || 'AI Prompt', prompt: form.prompt.trim(), updatedAt: new Date().toISOString() } : item));
-      setEditingId(null);
-    } else {
-      setPrompts([{ id: uid(), createdAt: new Date().toISOString(), ...form, title: form.title.trim() || 'AI Prompt', prompt: form.prompt.trim() }, ...prompts]);
-    }
-    setForm({ title: '', category: '', date: todayISO(), prompt: '' });
-  };
-
-  const edit = (prompt) => {
-    setForm({ title: prompt.title || '', category: prompt.category || '', date: prompt.date || todayISO(), prompt: prompt.prompt || prompt.content || '' });
-    setEditingId(prompt.id);
-    setSelected(null);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
-
-  const remove = (id) => {
-    setPrompts(prompts.filter((item) => item.id !== id));
-    setSelected(null);
-  };
-
-  return (
-    <main className="single-page">
-      <SectionHeader title="AI Prompt Library" subtitle="Prompt cards show a preview; click any prompt to read/copy the full version." />
-      <form className="panel" onSubmit={addOrUpdate}>
-        <div className="form-grid three">
-          <Field label="Prompt title"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Rendering correction prompt" /></Field>
-          <Field label="Category"><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Render / Email / Code / ARE" /></Field>
-          <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-          <Field label="Full prompt"><textarea value={form.prompt} onChange={(e) => setForm({ ...form, prompt: e.target.value })} placeholder="Paste the full prompt here. The card will only show preview text." /></Field>
-        </div>
-        <div className="button-row">
-          <Button type="submit" className="wide">{editingId ? 'Update Prompt' : 'Save Prompt'}</Button>
-          {editingId && <Button variant="secondary" type="button" onClick={() => { setEditingId(null); setForm({ title: '', category: '', date: todayISO(), prompt: '' }); }}>Cancel Edit</Button>}
-        </div>
-      </form>
-      <CardGrid items={prompts} render={(prompt) => (
-        <PreviewCard key={prompt.id} title={prompt.title} meta={formatDate(prompt.date)} badge={prompt.category || 'Prompt'} text={prompt.prompt || prompt.content} onOpen={() => setSelected(prompt)}>
-          <Button variant="secondary" onClick={() => copyPrompt(prompt.prompt || prompt.content)}>Copy</Button>
-          <Button variant="secondary" onClick={() => edit(prompt)}>Edit</Button>
-          <Button variant="ghost-danger" onClick={() => remove(prompt.id)}>Delete</Button>
-        </PreviewCard>
-      )} />
-      <DetailModal
-        open={!!selected}
-        title={selected?.title}
-        eyebrow="AI prompt"
-        onClose={() => setSelected(null)}
-        footer={selected && (
-          <>
-            <Button variant="secondary" onClick={() => copyPrompt(selected.prompt || selected.content)}>Copy full prompt</Button>
-            <Button variant="secondary" onClick={() => edit(selected)}>Edit</Button>
-            <Button variant="ghost-danger" onClick={() => remove(selected.id)}>Delete</Button>
-          </>
-        )}
-      >
-        {selected && (
-          <>
-            <div className="detail-grid">
-              <DetailRow label="Category" value={selected.category || 'Prompt'} />
-              <DetailRow label="Date" value={formatDate(selected.date)} />
-            </div>
-            <FullText label="Full prompt" value={selected.prompt || selected.content} />
-          </>
-        )}
-      </DetailModal>
-    </main>
-  );
-}
-
-function RevitTroubleShoot({ items, setItems }) {
-  const [form, setForm] = useState({ title: '', project: '', category: '', date: todayISO(), problem: '', solution: '' });
-  const [selected, setSelected] = useState(null);
-
-  const add = (event) => {
-    event.preventDefault();
-    if (!form.title.trim() && !form.problem.trim() && !form.solution.trim()) return;
-    setItems([{ id: uid(), createdAt: new Date().toISOString(), ...form, title: form.title.trim() || 'Revit Troubleshooting Note', problem: form.problem.trim(), solution: form.solution.trim() }, ...items]);
-    setForm({ title: '', project: '', category: '', date: todayISO(), problem: '', solution: '' });
-  };
-
-  const remove = (id) => {
-    setItems(items.filter((item) => item.id !== id));
-    setSelected(null);
-  };
-
-  return (
-    <main className="single-page">
-      <SectionHeader title="Revit Trouble Shoot" subtitle="Issue cards are compact, but the full problem and solution open in a modal." />
-      <form className="panel" onSubmit={add}>
-        <div className="form-grid three">
-          <Field label="Issue title"><input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Bind link keeps repeating errors" /></Field>
-          <Field label="Project"><input value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} placeholder="Project name / number" /></Field>
-          <Field label="Category"><input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} placeholder="Link / Family / View / Sheet" /></Field>
-          <Field label="Date"><input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></Field>
-          <Field label="Problem description"><textarea value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} placeholder="What went wrong? Error message? Context?" /></Field>
-          <Field label="Solution / notes"><textarea value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} placeholder="What fixed it? What should I remember next time?" /></Field>
-        </div>
-        <Button type="submit" className="wide">Save Revit Note</Button>
-      </form>
-      <CardGrid items={items} render={(item) => (
-        <PreviewCard key={item.id} title={item.title} meta={formatDate(item.date)} badge={item.category || 'Revit'} text={`${item.project ? `${item.project}\n` : ''}${item.problem || ''}\n${item.solution || ''}`} onOpen={() => setSelected(item)}>
-          <Button variant="ghost-danger" onClick={() => remove(item.id)}>Delete</Button>
-        </PreviewCard>
-      )} />
-      <DetailModal open={!!selected} title={selected?.title} eyebrow="Revit trouble shoot" onClose={() => setSelected(null)} footer={selected && <Button variant="ghost-danger" onClick={() => remove(selected.id)}>Delete</Button>}>
-        {selected && (
-          <>
-            <div className="detail-grid">
-              <DetailRow label="Project" value={selected.project || 'No project'} />
-              <DetailRow label="Category" value={selected.category || 'Revit'} />
-              <DetailRow label="Date" value={formatDate(selected.date)} />
-            </div>
-            <FullText label="Problem description" value={selected.problem} />
-            <FullText label="Solution / notes" value={selected.solution} />
-          </>
-        )}
-      </DetailModal>
-    </main>
-  );
-}
-
-function CardGrid({ items, render }) {
-  if (!items.length) return <EmptyState>No saved items yet. Add one above.</EmptyState>;
-  return <div className="note-grid">{items.map(render)}</div>;
-}
-
-function App() {
-  const [activeTab, setActiveTab] = useState('Dashboard');
-  const [tasks, setTasks] = useLocalArray(STORAGE_KEYS.tasks, olderStorageKeys.tasks);
-  const [logs, setLogs] = useLocalArray(STORAGE_KEYS.daily, olderStorageKeys.daily);
-  const [dobNotes, setDobNotes] = useLocalArray(STORAGE_KEYS.dob, olderStorageKeys.dob);
-  const [prompts, setPrompts] = useLocalArray(STORAGE_KEYS.prompts, olderStorageKeys.prompts);
-  const [revitItems, setRevitItems] = useLocalArray(STORAGE_KEYS.revit, olderStorageKeys.revit);
-
-  return (
-    <div className="app-shell">
-      <TopNav activeTab={activeTab} setActiveTab={setActiveTab} />
-      {activeTab === 'Dashboard' && <Dashboard tasks={tasks} setTasks={setTasks} />}
-      {activeTab === 'Daily Task Log' && <DailyTaskLog logs={logs} setLogs={setLogs} />}
-      {activeTab === 'DOB Notes' && <DOBNotes notes={dobNotes} setNotes={setDobNotes} />}
-      {activeTab === 'AI Prompt Library' && <AIPromptLibrary prompts={prompts} setPrompts={setPrompts} />}
-      {activeTab === 'Revit Trouble Shoot' && <RevitTroubleShoot items={revitItems} setItems={setRevitItems} />}
+    <div className="monthGrid">
+      {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day) => <strong key={day} className="dayName">{day}</strong>)}
+      {weeks.map((date) => {
+        const key = formatDate(date);
+        const dayTasks = tasks.filter((task) => getTaskDateKeys(task).includes(key)).slice(0, 3);
+        const hasLog = dailyLogs.some((log) => log.date === key);
+        return (
+          <div key={key} className={`monthCell ${date.getMonth() !== month ? "other" : ""} ${key === today ? "today" : ""}`}>
+            <span>{date.getDate()}</span>
+            {dayTasks.map((task) => <div key={task.id} className={`calendarBar ${getTaskTone(task)}`}>{task.title}</div>)}
+            {hasLog && <i className="logDot" title="Daily log" />}
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-createRoot(document.getElementById('root')).render(<App />);
+function TodayCalendarView({ currentDate, tasks, dailyLogs }) {
+  const today = formatDate(currentDate);
+  const todayTasks = sortFocusTasks(tasks.filter((task) => task.status !== "Done" && getTaskDateKeys(task).includes(today)));
+  const todayLogs = dailyLogs.filter((log) => log.date === today);
+  return (
+    <section className="todayPanel">
+      <p className="eyebrow">Today</p>
+      <h3>{currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</h3>
+      <FocusTaskBoard title="Today Focus" tasks={todayTasks} emptyText="No active tasks today." />
+      {todayLogs.length > 0 && (
+        <div className="miniList">
+          <p className="miniSectionTitle">Daily logs</p>
+          {todayLogs.map((log) => <article className="miniLog" key={log.id}><strong>{log.project || "Daily Log"}</strong><span>{log.summary}</span></article>)}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function WeekCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
+  const days = useMemo(() => getWeekDays(calendarDate), [calendarDate]);
+  const today = formatDate(currentDate);
+  const weekKeys = days.map(formatDate);
+  const weekTasks = sortFocusTasks(tasks.filter((task) => task.status !== "Done" && getTaskDateKeys(task).some((key) => weekKeys.includes(key))));
+  return (
+    <section className="weekPanel">
+      <div className="weekGrid">
+        {days.map((day) => {
+          const key = formatDate(day);
+          const dayTasks = tasks.filter((task) => getTaskDateKeys(task).includes(key)).slice(0, 4);
+          const logs = dailyLogs.filter((log) => log.date === key);
+          return (
+            <div className={`weekCell ${key === today ? "today" : ""}`} key={key}>
+              <strong>{day.toLocaleDateString(undefined, { weekday: "short" })}</strong>
+              <span>{day.getMonth() + 1}/{day.getDate()}</span>
+              {dayTasks.map((task) => <div key={task.id} className={`calendarBar ${getTaskTone(task)}`}>{task.title}</div>)}
+              {logs.length > 0 && <small>{logs.length} log</small>}
+            </div>
+          );
+        })}
+      </div>
+      <FocusTaskBoard title="This Week Focus" tasks={weekTasks} emptyText="No active tasks scheduled for this week." />
+    </section>
+  );
+}
+
+function YearCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
+  const year = calendarDate.getFullYear();
+  const today = formatDate(currentDate);
+  return (
+    <div className="yearGrid">
+      {Array.from({ length: 12 }, (_, month) => new Date(year, month, 1)).map((date) => (
+        <section key={date.getMonth()} className="miniMonth">
+          <h4>{date.toLocaleDateString(undefined, { month: "short" })}</h4>
+          <div className="miniMonthGrid">
+            {getMonthWeeks(date).slice(0, 35).map((day) => {
+              const key = formatDate(day);
+              const busy = tasks.some((task) => getTaskDateKeys(task).includes(key));
+              const log = dailyLogs.some((item) => item.date === key);
+              return <span key={key} className={`${day.getMonth() !== date.getMonth() ? "other" : ""} ${key === today ? "today" : ""} ${busy ? "busy" : ""} ${log ? "hasLog" : ""}`}>{day.getDate()}</span>;
+            })}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function FocusTaskBoard({ title, tasks, emptyText }) {
+  const [openTask, setOpenTask] = useState(null);
+  const grouped = FOCUS_COLUMNS.reduce((acc, column) => {
+    acc[column] = tasks.filter((task) => getFocusColumn(task) === column);
+    return acc;
+  }, {});
+
+  return (
+    <section className="focusPanel">
+      <div className="focusHead">
+        <div>
+          <p className="eyebrow">Focus Board</p>
+          <h3>{title}</h3>
+        </div>
+        <span className="focusCount">{tasks.length} task{tasks.length === 1 ? "" : "s"}</span>
+      </div>
+      {tasks.length === 0 ? <EmptyState>{emptyText}</EmptyState> : (
+        <div className="focusColumns">
+          {FOCUS_COLUMNS.map((column) => (
+            <section key={column} className="focusColumn">
+              <h4>{column}</h4>
+              {grouped[column].length === 0 ? <p className="focusEmpty">Clear</p> : grouped[column].map((task) => (
+                <button key={task.id} type="button" className={`focusTask ${getTaskTone(task)}`} onClick={() => setOpenTask(task)}>
+                  <span>{task.title}</span>
+                  <small>{task.project || "No project"}</small>
+                  <small>{getTaskDateLabel(task)}</small>
+                </button>
+              ))}
+            </section>
+          ))}
+        </div>
+      )}
+      {openTask && (
+        <FullDetailModal
+          eyebrow="Task Detail"
+          title={openTask.title}
+          subtitle={`${openTask.project || "No project"} · ${getTaskDateLabel(openTask)}`}
+          meta={[["Priority", openTask.priority], ["Status", openTask.status], ["Start", openTask.startDate || "—"], ["Due", openTask.dueDate || "—"]]}
+          sections={[{ title: "Task notes / details", body: openTask.notes || "No notes yet." }]}
+          onClose={() => setOpenTask(null)}
+        />
+      )}
+    </section>
+  );
+}
+
+function DailyTaskLog({ data, setData, searchQuery, setSearchQuery }) {
+  const [form, setForm] = useState({ date: todayKey(), project: "", summary: "", notes: "" });
+  const [openLog, setOpenLog] = useState(null);
+  const logs = data.dailyLogs.filter((log) => matchesSearch(`${log.date} ${log.project} ${log.summary} ${log.notes}`, searchQuery));
+
+  function addLog(event) {
+    event.preventDefault();
+    const nextLog = normalizeDailyLog({ ...form, id: uid(), createdAt: new Date().toISOString() });
+    setData({ ...data, dailyLogs: [nextLog, ...data.dailyLogs] });
+    setForm({ date: todayKey(), project: form.project, summary: "", notes: "" });
+  }
+
+  function deleteLog(id) {
+    setData({ ...data, dailyLogs: data.dailyLogs.filter((log) => log.id !== id) });
+  }
+
+  return (
+    <>
+      <SectionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search daily logs..." />
+      <form className="panel libraryForm" onSubmit={addLog}>
+        <label>Date<input type="date" value={form.date} onChange={(event) => setForm({ ...form, date: event.target.value })} /></label>
+        <label>Project<input value={form.project} onChange={(event) => setForm({ ...form, project: event.target.value })} placeholder="Project name" /></label>
+        <label className="wide">Quick summary<input value={form.summary} onChange={(event) => setForm({ ...form, summary: event.target.value })} placeholder="What happened today?" /></label>
+        <label className="wide">Full notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Write detailed daily notes here..." /></label>
+        <button type="submit" className="primary wide">Add Daily Log</button>
+      </form>
+      <div className="cardGrid">
+        {logs.length === 0 ? <EmptyState>No daily logs yet.</EmptyState> : logs.map((log) => (
+          <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
+            <span className="dateChip">{shortDate(log.date)}</span>
+            <h3>{log.summary || "Daily Log"}</h3>
+            {log.project && <p className="mutedText">{log.project}</p>}
+            <p className="clampedText">{log.notes || "No full notes yet."}</p>
+            <button type="button" className="viewButton" onClick={(event) => { event.stopPropagation(); setOpenLog(log); }}>View full notes</button>
+            <button type="button" className="ghostButton" onClick={(event) => { event.stopPropagation(); deleteLog(log.id); }}>Delete</button>
+          </article>
+        ))}
+      </div>
+      {openLog && <FullDetailModal eyebrow="Daily Task Log" title={openLog.summary || "Daily Log"} subtitle={`${shortDate(openLog.date)} · ${openLog.project || "No project"}`} sections={[{ title: "Full daily notes", body: openLog.notes || "No notes yet." }]} onClose={() => setOpenLog(null)} />}
+    </>
+  );
+}
+
+function DOBNotes({ data, setData, searchQuery, setSearchQuery }) {
+  const [form, setForm] = useState({ title: "", category: "General", code: "", notes: "" });
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [openNote, setOpenNote] = useState(null);
+  const categories = ["All", ...Array.from(new Set(data.codeNotes.map((note) => note.category).filter(Boolean))).sort()];
+  const notes = data.codeNotes.filter((note) => (categoryFilter === "All" || note.category === categoryFilter) && matchesSearch(`${note.title} ${note.category} ${note.code} ${note.notes}`, searchQuery));
+
+  function addNote(event) {
+    event.preventDefault();
+    if (!form.title.trim() && !form.notes.trim()) return;
+    const nextNote = normalizeCodeNote({ ...form, id: uid(), createdAt: new Date().toISOString() });
+    setData({ ...data, codeNotes: [nextNote, ...data.codeNotes] });
+    setForm({ title: "", category: form.category, code: "", notes: "" });
+  }
+
+  function deleteNote(id) {
+    setData({ ...data, codeNotes: data.codeNotes.filter((note) => note.id !== id) });
+  }
+
+  return (
+    <>
+      <SectionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search DOB notes..." />
+      <form className="panel libraryForm" onSubmit={addNote}>
+        <label>Title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Wheelchair seating / zoning note" /></label>
+        <label>Category<input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="DOB / Zoning / Code" /></label>
+        <label className="wide">Code / section<input value={form.code} onChange={(event) => setForm({ ...form, code: event.target.value })} placeholder="BC 1108.2.2.1" /></label>
+        <label className="wide">Full notes<textarea value={form.notes} onChange={(event) => setForm({ ...form, notes: event.target.value })} placeholder="Paste the full DOB/code note here..." /></label>
+        <button type="submit" className="primary wide">Save DOB Note</button>
+      </form>
+      <div className="panel filterPanel singleLine">
+        <label>Category filter<select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>{categories.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+      </div>
+      <div className="cardGrid">
+        {notes.length === 0 ? <EmptyState>No DOB notes yet.</EmptyState> : notes.map((note) => (
+          <article key={note.id} className="libraryCard" onClick={() => setOpenNote(note)}>
+            <span className="pill">{note.category}</span>
+            <h3>{note.title}</h3>
+            {note.code && <p className="mutedText">{note.code}</p>}
+            <p className="clampedText">{note.notes || "No notes yet."}</p>
+            <button type="button" className="viewButton" onClick={(event) => { event.stopPropagation(); setOpenNote(note); }}>View full notes</button>
+            <button type="button" className="ghostButton" onClick={(event) => { event.stopPropagation(); deleteNote(note.id); }}>Delete</button>
+          </article>
+        ))}
+      </div>
+      {openNote && <FullDetailModal eyebrow="DOB Notes" title={openNote.title} subtitle={openNote.category} meta={[["Code / Section", openNote.code]]} sections={[{ title: "Full DOB notes", body: openNote.notes || "No notes yet." }]} onClose={() => setOpenNote(null)} />}
+    </>
+  );
+}
+
+function PromptLibrary({ data, setData, searchQuery, setSearchQuery }) {
+  const [form, setForm] = useState({ title: "", category: "General", prompt: "", favorite: false });
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [openPrompt, setOpenPrompt] = useState(null);
+  const prompts = data.prompts.filter((prompt) => (!favoritesOnly || prompt.favorite) && matchesSearch(`${prompt.title} ${prompt.category} ${prompt.prompt}`, searchQuery));
+
+  function addPrompt(event) {
+    event.preventDefault();
+    if (!form.title.trim() && !form.prompt.trim()) return;
+    const nextPrompt = normalizePrompt({ ...form, id: uid(), createdAt: new Date().toISOString() });
+    setData({ ...data, prompts: [nextPrompt, ...data.prompts] });
+    setForm({ title: "", category: form.category, prompt: "", favorite: false });
+  }
+
+  function updatePrompt(id, patch) {
+    setData({ ...data, prompts: data.prompts.map((prompt) => prompt.id === id ? { ...prompt, ...patch } : prompt) });
+  }
+
+  function deletePrompt(id) {
+    setData({ ...data, prompts: data.prompts.filter((prompt) => prompt.id !== id) });
+  }
+
+  async function copyPrompt(prompt, event) {
+    event.stopPropagation();
+    try { await navigator.clipboard.writeText(prompt.prompt || ""); } catch {}
+  }
+
+  return (
+    <>
+      <SectionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search prompts..." />
+      <form className="panel libraryForm" onSubmit={addPrompt}>
+        <label>Prompt title<input value={form.title} onChange={(event) => setForm({ ...form, title: event.target.value })} placeholder="Rendering cleanup prompt" /></label>
+        <label>Category<input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="Rendering / Email / Code" /></label>
+        <label className="checkboxLabel"><input type="checkbox" checked={form.favorite} onChange={(event) => setForm({ ...form, favorite: event.target.checked })} /> Favorite</label>
+        <label className="wide">Full prompt<textarea value={form.prompt} onChange={(event) => setForm({ ...form, prompt: event.target.value })} placeholder="Paste the entire prompt here..." /></label>
+        <button type="submit" className="primary wide">Save Prompt</button>
+      </form>
+      <div className="panel filterPanel singleLine">
+        <label className="checkboxLabel"><input type="checkbox" checked={favoritesOnly} onChange={(event) => setFavoritesOnly(event.target.checked)} /> Favorites only</label>
+      </div>
+      <div className="cardGrid">
+        {prompts.length === 0 ? <EmptyState>No prompts yet.</EmptyState> : prompts.map((prompt) => (
+          <article key={prompt.id} className="libraryCard" onClick={() => setOpenPrompt(prompt)}>
+            <span className="pill">{prompt.favorite ? "★ Favorite" : prompt.category}</span>
+            <h3>{prompt.title}</h3>
+            <p className="clampedText">{prompt.prompt || "No prompt text yet."}</p>
+            <button type="button" className="viewButton" onClick={(event) => { event.stopPropagation(); setOpenPrompt(prompt); }}>View full prompt</button>
+            <div className="cardActions">
+              <button type="button" onClick={(event) => copyPrompt(prompt, event)}>Copy</button>
+              <button type="button" onClick={(event) => { event.stopPropagation(); updatePrompt(prompt.id, { favorite: !prompt.favorite }); }}>{prompt.favorite ? "Unfavorite" : "Favorite"}</button>
+              <button type="button" className="ghostButton" onClick={(event) => { event.stopPropagation(); deletePrompt(prompt.id); }}>Delete</button>
+            </div>
+          </article>
+        ))}
+      </div>
+      {openPrompt && <FullDetailModal eyebrow="AI Prompt Library" title={openPrompt.title} subtitle={openPrompt.category} sections={[{ title: "Full prompt", body: openPrompt.prompt || "No prompt yet." }]} copyText={openPrompt.prompt} onClose={() => setOpenPrompt(null)} />}
+    </>
+  );
+}
+
+function RevitTroubleShoot({ data, setData, searchQuery, setSearchQuery }) {
+  const [form, setForm] = useState({ issue: "", project: "", category: "General", problem: "", solution: "", status: "Open" });
+  const [openLog, setOpenLog] = useState(null);
+  const logs = data.revitLogs.filter((log) => matchesSearch(`${log.issue} ${log.project} ${log.category} ${log.problem} ${log.solution}`, searchQuery));
+
+  function addLog(event) {
+    event.preventDefault();
+    if (!form.issue.trim() && !form.problem.trim()) return;
+    const nextLog = normalizeRevit({ ...form, id: uid(), createdAt: new Date().toISOString() });
+    setData({ ...data, revitLogs: [nextLog, ...data.revitLogs] });
+    setForm({ issue: "", project: form.project, category: form.category, problem: "", solution: "", status: "Open" });
+  }
+
+  function deleteLog(id) {
+    setData({ ...data, revitLogs: data.revitLogs.filter((log) => log.id !== id) });
+  }
+
+  return (
+    <>
+      <SectionSearch value={searchQuery} onChange={setSearchQuery} placeholder="Search Revit troubleshooting..." />
+      <form className="panel libraryForm" onSubmit={addLog}>
+        <label>Issue title<input value={form.issue} onChange={(event) => setForm({ ...form, issue: event.target.value })} placeholder="Viewport title not showing" /></label>
+        <label>Project<input value={form.project} onChange={(event) => setForm({ ...form, project: event.target.value })} placeholder="Project" /></label>
+        <label>Category<input value={form.category} onChange={(event) => setForm({ ...form, category: event.target.value })} placeholder="Family / View / Model" /></label>
+        <label>Status<select value={form.status} onChange={(event) => setForm({ ...form, status: event.target.value })}><option>Open</option><option>Testing</option><option>Solved</option></select></label>
+        <label className="wide">Problem description<textarea value={form.problem} onChange={(event) => setForm({ ...form, problem: event.target.value })} placeholder="What went wrong?" /></label>
+        <label className="wide">Solution / notes<textarea value={form.solution} onChange={(event) => setForm({ ...form, solution: event.target.value })} placeholder="How did you fix it?" /></label>
+        <button type="submit" className="primary wide">Save Revit Note</button>
+      </form>
+      <div className="cardGrid">
+        {logs.length === 0 ? <EmptyState>No Revit troubleshooting notes yet.</EmptyState> : logs.map((log) => (
+          <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
+            <span className="pill">{log.status}</span>
+            <h3>{log.issue}</h3>
+            {log.project && <p className="mutedText">{log.project} · {log.category}</p>}
+            <p className="clampedText">{log.problem || log.solution || "No notes yet."}</p>
+            <button type="button" className="viewButton" onClick={(event) => { event.stopPropagation(); setOpenLog(log); }}>View full notes</button>
+            <button type="button" className="ghostButton" onClick={(event) => { event.stopPropagation(); deleteLog(log.id); }}>Delete</button>
+          </article>
+        ))}
+      </div>
+      {openLog && <FullDetailModal eyebrow="Revit Trouble Shoot" title={openLog.issue} subtitle={`${openLog.project || "No project"} · ${openLog.category}`} meta={[["Status", openLog.status]]} sections={[{ title: "Problem description", body: openLog.problem || "No problem description yet." }, { title: "Solution / notes", body: openLog.solution || "No solution yet." }]} onClose={() => setOpenLog(null)} />}
+    </>
+  );
+}
+
+createRoot(document.getElementById("root")).render(<App />);

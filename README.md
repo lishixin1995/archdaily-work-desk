@@ -1,18 +1,7 @@
 # ARCH DAILY WORK DESK
 
-A personal architecture workflow dashboard built with Vite + React.
+Full clean version for Vercel + GitHub.
 
-## Run locally
-
-```bash
-npm install
-npm run dev
-```
-
-## Deploy on Vercel
-
-Push the files to GitHub, then import/redeploy the repo in Vercel. Build command: `npm run build`, output folder: `dist`.
-
-## Notes update
-
-Dashboard, DOB Notes, AI Prompt Library, and Revit Trouble Shoot cards now use compact previews and open full-note detail modals, matching Daily Task Log behavior.
+- No package-lock.json included.
+- Uses the original localStorage key: `arch-daily-work-desk-v1`.
+- Dashboard, Daily Task Log, DOB Notes, AI Prompt Library, and Revit Trouble Shoot cards all support full-note/detail modal.
