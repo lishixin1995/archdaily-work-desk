@@ -7,6 +7,21 @@
   </head>
   <body>
     <div id="root"></div>
+    <script type="module">
+      import { bootCloudSync } from '/src/cloudSync.js';
+
+      await bootCloudSync({
+        app: 'archdaily-work-desk',
+        keys: [
+          'archDailyWorkDesk.tasks.v2',
+          'archDailyWorkDesk.dailyTaskLog.v2',
+          'archDailyWorkDesk.dobNotes.v2',
+          'archDailyWorkDesk.dobCodeLinks.v1',
+          'archDailyWorkDesk.aiPromptLibrary.v2',
+          'archDailyWorkDesk.revitTroubleShoot.v2'
+        ]
+      });
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
