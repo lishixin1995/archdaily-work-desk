@@ -591,6 +591,71 @@ textarea { min-height: 122px; resize: vertical; }
   padding: 16px;
   color: #344054;
 }
+
+.screenshotDrop {
+  border: 1px dashed rgba(163, 102, 58, .45);
+  border-radius: 18px;
+  padding: 16px;
+  background: rgba(255, 255, 255, .46);
+  cursor: pointer;
+}
+.screenshotDrop:hover { border-color: var(--warm); background: rgba(255,255,255,.62); }
+.screenshotDrop input[type="file"] { margin-top: 10px; }
+.screenshotDrop > span {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+.screenshotPreview {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255,255,255,.7);
+}
+.screenshotPreview img {
+  width: 92px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+}
+.screenshotPreview strong { display: block; margin-bottom: 6px; font-size: 13px; }
+.screenshotPreview button {
+  width: auto;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  color: var(--warmDark);
+  background: white;
+}
+.modalImageGrid { display: grid; gap: 12px; }
+.modalImageCard {
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255,255,255,.62);
+}
+.modalImageCard img {
+  display: block;
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  border-radius: 14px;
+  background: white;
+  border: 1px solid var(--line);
+}
+.modalImageCard figcaption {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
 .modalActions { padding: 0 26px 24px; display: flex; justify-content: flex-end; gap: 10px; }
 .modalActions button { border: 1px solid var(--line); background: white; color: var(--warmDark); }
 

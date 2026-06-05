@@ -63,6 +63,50 @@ function useStoredArray(primaryKey, legacyKeys = []) {
   return [items, setItems];
 }
 
+
+function fileToDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+function loadImage(src) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = reject;
+    image.src = src;
+  });
+}
+
+async function makeScreenshotAttachment(file) {
+  if (!file || !file.type?.startsWith('image/')) return null;
+  const originalDataUrl = await fileToDataUrl(file);
+  const image = await loadImage(originalDataUrl);
+  const maxWidth = 1600;
+  const scale = Math.min(1, maxWidth / image.width);
+  const width = Math.max(1, Math.round(image.width * scale));
+  const height = Math.max(1, Math.round(image.height * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(image, 0, 0, width, height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+  return {
+    id: uid(),
+    name: file.name || 'Screenshot',
+    type: 'image/jpeg',
+    size: file.size || 0,
+    width,
+    height,
+    dataUrl,
+  };
+}
+
 function todayISO() {
   return formatDate(new Date());
 }
@@ -221,7 +265,7 @@ function getTaskSegmentsForWeek(task, weekDays) {
   return { startCol: Math.min(...positions), endCol: Math.max(...positions) + 1 };
 }
 
-function FullNoteModal({ open, title, eyebrow = 'Full notes', meta = [], sections = [], copyText = '', onClose }) {
+function FullNoteModal({ open, title, eyebrow = 'Full notes', meta = [], sections = [], images = [], copyText = '', onClose }) {
   useEffect(() => {
     if (!open) return undefined;
     function handleKeyDown(event) {
@@ -269,6 +313,19 @@ function FullNoteModal({ open, title, eyebrow = 'Full notes', meta = [], section
               <p>{text || 'No notes yet.'}</p>
             </section>
           ))}
+          {images.length > 0 && (
+            <section className="modalSection screenshotSection">
+              <h3>Saved screenshot</h3>
+              <div className="modalImageGrid">
+                {images.map((image, index) => (
+                  <figure key={image.id || image.name || index} className="modalImageCard">
+                    <img src={image.dataUrl || image.src} alt={image.name || 'Saved screenshot'} />
+                    {image.name && <figcaption>{image.name}</figcaption>}
+                  </figure>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
         <div className="modalActions">
           <button type="button" onClick={copyFullText}>Copy full text</button>
@@ -508,7 +565,7 @@ function DailyTaskLog({ dailyLogs, setDailyLogs }) {
 }
 
 function DobNotes({ dobNotes, setDobNotes }) {
-  const [form, setForm] = useState({ date: todayISO(), category: 'General', title: '', notes: '' });
+  const [form, setForm] = useState({ date: todayISO(), category: 'General', title: '', notes: '', screenshot: null });
   const [linkForm, setLinkForm] = useState({ title: '', url: '', category: 'Code' });
   const [dobLinks, setDobLinks] = useStoredArray(STORAGE_KEYS.dobLinks, LEGACY_KEYS.dobLinks);
   const [search, setSearch] = useState('');
@@ -516,11 +573,18 @@ function DobNotes({ dobNotes, setDobNotes }) {
   const [openNote, setOpenNote] = useState(null);
   const filtered = dobNotes.filter((note) => matchesQuery(note, search) && (category === 'All' || note.category === category));
 
+  async function handleScreenshotFiles(files) {
+    const file = Array.from(files || []).find((item) => item.type?.startsWith('image/'));
+    if (!file) return;
+    const screenshot = await makeScreenshotAttachment(file);
+    if (screenshot) setForm((current) => ({ ...current, screenshot }));
+  }
+
   function addNote(event) {
     event.preventDefault();
     if (!form.title.trim() && !form.notes.trim()) return;
     setDobNotes([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...dobNotes]);
-    setForm({ date: todayISO(), category: form.category, title: '', notes: '' });
+    setForm({ date: todayISO(), category: form.category, title: '', notes: '', screenshot: null });
   }
 
   function addDobLink(event) {
@@ -544,6 +608,27 @@ function DobNotes({ dobNotes, setDobNotes }) {
         <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{DOB_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
         <label className="wide">Title<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Code / DOB quick note title" /></label>
         <label className="wide">Full note<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Write the complete DOB/code note here..." /></label>
+        <label
+          className={`wide screenshotDrop ${form.screenshot ? 'hasScreenshot' : ''}`}
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={(event) => {
+            event.preventDefault();
+            handleScreenshotFiles(event.dataTransfer.files);
+          }}
+        >
+          Screenshot upload
+          <input type="file" accept="image/*" onChange={(e) => handleScreenshotFiles(e.target.files)} />
+          <span>Drag a screenshot here, or click to browse/upload.</span>
+          {form.screenshot && (
+            <div className="screenshotPreview">
+              <img src={form.screenshot.dataUrl} alt={form.screenshot.name || 'Screenshot preview'} />
+              <div>
+                <strong>{form.screenshot.name || 'Screenshot saved'}</strong>
+                <button type="button" onClick={(event) => { event.preventDefault(); setForm({ ...form, screenshot: null }); }}>Remove</button>
+              </div>
+            </div>
+          )}
+        </label>
         <button type="submit" className="primary wide">Add DOB Note</button>
       </form>
 
@@ -582,7 +667,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
       </section>
 
       <NoteCards items={filtered} kind="DOB Notes" onOpen={setOpenNote} onDelete={(id) => setDobNotes(dobNotes.filter((note) => note.id !== id))} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
-      {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category]]} sections={[["Full DOB note", openNote.notes]]} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
+      {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
     </>
   );
 }
@@ -686,7 +771,7 @@ function NoteCards({ items, kind, onOpen, onDelete, getTitle, getBody }) {
     <section className="libraryGrid">
       {items.length === 0 ? <div className="empty wideEmpty">No saved items yet.</div> : items.map((item) => (
         <article key={item.id} className="libraryCard" onClick={() => onOpen(item)}>
-          <p className="eyebrow">{item.category || kind}</p>
+          <p className="eyebrow">{item.category || kind}{item.screenshot ? ' · Screenshot' : ''}</p>
           <h3>{getTitle(item)}</h3>
           <p className="clampedText">{getBody(item)}</p>
           <div className="cardActions" onClick={(event) => event.stopPropagation()}>
