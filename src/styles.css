@@ -301,6 +301,63 @@ textarea { min-height: 122px; resize: vertical; }
 .libraryGrid.oneThird { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .libraryCard { margin: 0; min-height: 160px; }
 
+
+.dobLinkPanel {
+  margin: 18px 0 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255,250,243,.78);
+  box-shadow: var(--shadowSoft);
+}
+.dobLinkHead { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.dobLinkHead h3 { margin: 0 0 6px; font-size: 22px; }
+.dobLinkHead p { margin: 0; color: var(--muted); }
+.dobLinkForm {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr .75fr auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dobLinkButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dobLinkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(163,102,58,.22);
+  background: rgba(255,255,255,.72);
+  border-radius: 999px;
+  padding: 6px 7px 6px 12px;
+}
+.dobLinkChip a {
+  color: var(--warmDark);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+.dobLinkChip a:hover { text-decoration: underline; }
+.dobLinkChip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.dobLinkChip button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--warmDark);
+  line-height: 1;
+}
+
 .calendarPanel {
   padding: 26px;
   min-height: 620px;
@@ -329,12 +386,34 @@ textarea { min-height: 122px; resize: vertical; }
 .legendDot.urgent { background: var(--danger); }
 .legendDot.daily { background: #5f7f73; }
 
-.monthCalendar {
+.monthCalendarWrap {
+  display: grid;
+  gap: 8px;
+}
+.monthCalendarHead,
+.monthWeekCells,
+.monthTaskOverlay {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 8px;
 }
 .weekday { font-size: 12px; font-weight: 900; color: var(--muted); padding-left: 4px; }
+.monthCalendarRows {
+  display: grid;
+  gap: 8px;
+}
+.monthWeekRow {
+  position: relative;
+}
+.monthTaskOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 30px;
+  row-gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
 .monthCell {
   min-height: 94px;
   border: 1px solid var(--line);
@@ -342,8 +421,17 @@ textarea { min-height: 122px; resize: vertical; }
   border-radius: 16px;
   padding: 10px 8px;
   overflow: hidden;
+  position: relative;
 }
-.monthCell strong { display: block; font-size: 15px; margin-bottom: 6px; }
+.monthCell strong {
+  display: block;
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  font-size: 15px;
+  margin-bottom: 0;
+  z-index: 3;
+}
 .monthCell.muted { opacity: .42; }
 .monthCell.today { border-color: var(--warm); box-shadow: inset 0 0 0 1px rgba(163,102,58,.45); }
 .monthItems { display: grid; gap: 5px; }
@@ -366,6 +454,13 @@ textarea { min-height: 122px; resize: vertical; }
 .calendarTaskBar.high { background: #bb7952; }
 .calendarTaskBar.waiting { background: #8d745e; }
 .calendarTaskBar.done { background: #7d8f72; }
+.monthSpanTask {
+  width: auto;
+  min-height: 18px;
+  padding: 4px 8px;
+  pointer-events: auto;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08);
+}
 .calendarLogBar {
   width: 100%;
   border: 1px solid rgba(95, 127, 115, .32);
@@ -512,7 +607,64 @@ textarea { min-height: 122px; resize: vertical; }
   .mainNav { justify-content: flex-start; }
   .pageShell { grid-template-columns: 1fr; }
   .calendarDock { position: static; }
-  .calendarPanel { max-height: none; }
+  
+.dobLinkPanel {
+  margin: 18px 0 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255,250,243,.78);
+  box-shadow: var(--shadowSoft);
+}
+.dobLinkHead { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.dobLinkHead h3 { margin: 0 0 6px; font-size: 22px; }
+.dobLinkHead p { margin: 0; color: var(--muted); }
+.dobLinkForm {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr .75fr auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dobLinkButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dobLinkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(163,102,58,.22);
+  background: rgba(255,255,255,.72);
+  border-radius: 999px;
+  padding: 6px 7px 6px 12px;
+}
+.dobLinkChip a {
+  color: var(--warmDark);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+.dobLinkChip a:hover { text-decoration: underline; }
+.dobLinkChip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.dobLinkChip button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--warmDark);
+  line-height: 1;
+}
+
+.calendarPanel { max-height: none; }
   .kanbanGrid, .libraryGrid, .libraryGrid.oneThird { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .cardForm, .taskForm { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .filterCard { grid-template-columns: 1fr 1fr; }
@@ -521,9 +673,67 @@ textarea { min-height: 122px; resize: vertical; }
 @media (max-width: 720px) {
   .pageShell, .topbar { width: calc(100vw - 16px); }
   .kanbanGrid, .libraryGrid, .libraryGrid.oneThird, .cardForm, .taskForm, .filterCard, .libraryFilters { grid-template-columns: 1fr; }
-  .monthCalendar { gap: 5px; }
+  .monthCalendarHead, .monthWeekCells, .monthTaskOverlay { gap: 5px; }
+  .dobLinkForm { grid-template-columns: 1fr; }
   .monthCell { min-height: 76px; padding: 8px 5px; border-radius: 12px; }
-  .calendarPanel { padding: 16px; }
+  
+.dobLinkPanel {
+  margin: 18px 0 20px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255,250,243,.78);
+  box-shadow: var(--shadowSoft);
+}
+.dobLinkHead { display: flex; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
+.dobLinkHead h3 { margin: 0 0 6px; font-size: 22px; }
+.dobLinkHead p { margin: 0; color: var(--muted); }
+.dobLinkForm {
+  display: grid;
+  grid-template-columns: 1.1fr 1.4fr .75fr auto;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.dobLinkButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.dobLinkChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(163,102,58,.22);
+  background: rgba(255,255,255,.72);
+  border-radius: 999px;
+  padding: 6px 7px 6px 12px;
+}
+.dobLinkChip a {
+  color: var(--warmDark);
+  font-size: 13px;
+  font-weight: 900;
+  text-decoration: none;
+}
+.dobLinkChip a:hover { text-decoration: underline; }
+.dobLinkChip span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+}
+.dobLinkChip button {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--warmDark);
+  line-height: 1;
+}
+
+.calendarPanel { padding: 16px; }
   .calendarTop h2 { font-size: 30px; }
   .calendarMode { width: 100%; display: grid; grid-template-columns: repeat(4, 1fr); }
   .calendarMode button { padding: 10px 8px; }

@@ -6,6 +6,7 @@ const STORAGE_KEYS = {
   tasks: 'archDailyWorkDesk.tasks.v2',
   daily: 'archDailyWorkDesk.dailyTaskLog.v2',
   dob: 'archDailyWorkDesk.dobNotes.v2',
+  dobLinks: 'archDailyWorkDesk.dobCodeLinks.v1',
   prompts: 'archDailyWorkDesk.aiPromptLibrary.v2',
   revit: 'archDailyWorkDesk.revitTroubleShoot.v2',
 };
@@ -14,6 +15,7 @@ const LEGACY_KEYS = {
   tasks: ['archDailyWorkDesk.tasks', 'tasks', 'dashboardTasks'],
   daily: ['archDailyWorkDesk.dailyTaskLog', 'dailyTaskLog'],
   dob: ['archDailyWorkDesk.dobNotes', 'dobNotes', 'quickNotes'],
+  dobLinks: ['archDailyWorkDesk.dobCodeLinks', 'dobCodeLinks'],
   prompts: ['archDailyWorkDesk.aiPromptLibrary', 'aiPromptLibrary', 'promptLog'],
   revit: ['archDailyWorkDesk.revitTroubleShoot', 'revitTroubleShoot'],
 };
@@ -102,6 +104,13 @@ function niceDate(value) {
 
 function normalize(value) {
   return String(value || '').toLowerCase().trim();
+}
+
+function normalizeUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) return raw;
+  return `https://${raw}`;
 }
 
 function matchesQuery(item, query) {
@@ -500,6 +509,8 @@ function DailyTaskLog({ dailyLogs, setDailyLogs }) {
 
 function DobNotes({ dobNotes, setDobNotes }) {
   const [form, setForm] = useState({ date: todayISO(), category: 'General', title: '', notes: '' });
+  const [linkForm, setLinkForm] = useState({ title: '', url: '', category: 'Code' });
+  const [dobLinks, setDobLinks] = useStoredArray(STORAGE_KEYS.dobLinks, LEGACY_KEYS.dobLinks);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [openNote, setOpenNote] = useState(null);
@@ -510,6 +521,18 @@ function DobNotes({ dobNotes, setDobNotes }) {
     if (!form.title.trim() && !form.notes.trim()) return;
     setDobNotes([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...dobNotes]);
     setForm({ date: todayISO(), category: form.category, title: '', notes: '' });
+  }
+
+  function addDobLink(event) {
+    event.preventDefault();
+    const url = normalizeUrl(linkForm.url);
+    if (!linkForm.title.trim() || !url) return;
+    setDobLinks([{ ...linkForm, title: linkForm.title.trim(), url, id: uid(), createdAt: new Date().toISOString() }, ...dobLinks]);
+    setLinkForm({ title: '', url: '', category: linkForm.category });
+  }
+
+  function deleteDobLink(id) {
+    setDobLinks(dobLinks.filter((link) => link.id !== id));
   }
 
   return (
@@ -523,6 +546,41 @@ function DobNotes({ dobNotes, setDobNotes }) {
         <label className="wide">Full note<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Write the complete DOB/code note here..." /></label>
         <button type="submit" className="primary wide">Add DOB Note</button>
       </form>
+
+      <section className="dobLinkPanel">
+        <div className="dobLinkHead">
+          <div>
+            <p className="eyebrow">DOB Code Links</p>
+            <h3>Quick Access Buttons</h3>
+            <p>Save DOB/code reference URLs here. Each saved link becomes a button you can open anytime.</p>
+          </div>
+        </div>
+        <form className="dobLinkForm" onSubmit={addDobLink}>
+          <input value={linkForm.title} onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })} placeholder="Button name, e.g. DOB BIS / Zoning Text" />
+          <input value={linkForm.url} onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })} placeholder="Paste DOB/code link" />
+          <select value={linkForm.category} onChange={(e) => setLinkForm({ ...linkForm, category: e.target.value })}>
+            <option>Code</option>
+            <option>DOB</option>
+            <option>Zoning</option>
+            <option>BPP</option>
+            <option>Energy</option>
+            <option>Accessibility</option>
+          </select>
+          <button type="submit" className="primary">Add Link</button>
+        </form>
+        <div className="dobLinkButtons">
+          {dobLinks.length === 0 ? (
+            <div className="empty compact">No DOB code links saved yet.</div>
+          ) : dobLinks.map((link) => (
+            <div key={link.id} className="dobLinkChip">
+              <a href={link.url} target="_blank" rel="noreferrer">{link.title}</a>
+              <span>{link.category || 'Code'}</span>
+              <button type="button" aria-label={`Delete ${link.title}`} onClick={() => deleteDobLink(link.id)}>×</button>
+            </div>
+          ))}
+        </div>
+      </section>
+
       <NoteCards items={filtered} kind="DOB Notes" onOpen={setOpenNote} onDelete={(id) => setDobNotes(dobNotes.filter((note) => note.id !== id))} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
       {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category]]} sections={[["Full DOB note", openNote.notes]]} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
     </>
@@ -681,31 +739,70 @@ function CalendarPanel({ tasks, dailyLogs, onOpenTask, onOpenDailyLog, activeTab
 function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpenTask, onOpenDailyLog }) {
   const weeks = useMemo(() => getMonthWeeks(calendarDate), [calendarDate]);
   const todayKey = formatDate(currentDate);
+
   return (
-    <div className="monthCalendar">
-      {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day) => <div key={day} className="weekday">{day}</div>)}
-      {weeks.flat().map((day) => {
-        const key = formatDate(day);
-        const dayTasks = getTasksForDate(tasks, key).slice(0, 2);
-        const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 2);
-        const logCount = dailyLogs.filter((log) => log.date === key).length;
-        return (
-          <div key={key} className={`monthCell ${!sameMonth(day, calendarDate) ? 'muted' : ''} ${key === todayKey ? 'today' : ''}`}>
-            <strong>{day.getDate()}</strong>
-            <div className="monthItems">
-              {dayTasks.map((task) => (
-                <button key={task.id} type="button" className={`calendarTaskBar ${getTaskTone(task)}`} title={task.title} onClick={() => onOpenTask(task)}>{task.title}</button>
-              ))}
-              {dayLogs.map((log) => (
-                <button key={log.id} type="button" className="calendarLogBar" title={log.summary || log.project || 'Daily Log'} onClick={() => onOpenDailyLog(log)}>
-                  {log.summary || log.project || 'Daily Log'}
-                </button>
-              ))}
-              {logCount > dayLogs.length && <span className="logMarker">+{logCount - dayLogs.length} more log{logCount - dayLogs.length > 1 ? 's' : ''}</span>}
+    <div className="monthCalendarWrap">
+      <div className="monthCalendarHead">
+        {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day) => <div key={day} className="weekday">{day}</div>)}
+      </div>
+
+      <div className="monthCalendarRows">
+        {weeks.map((week, weekIndex) => {
+          const weekTasks = sortFocusTasks(tasks.filter((task) => getTaskSegmentsForWeek(task, week))).slice(0, 4);
+          const taskRows = weekTasks.length;
+          const cellPaddingTop = 34 + taskRows * 20;
+
+          return (
+            <div key={`week-${weekIndex}`} className="monthWeekRow">
+              <div className="monthWeekCells">
+                {week.map((day) => {
+                  const key = formatDate(day);
+                  const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 2);
+                  const logCount = dailyLogs.filter((log) => log.date === key).length;
+                  return (
+                    <div
+                      key={key}
+                      className={`monthCell ${!sameMonth(day, calendarDate) ? 'muted' : ''} ${key === todayKey ? 'today' : ''}`}
+                      style={{ paddingTop: `${cellPaddingTop}px` }}
+                    >
+                      <strong>{day.getDate()}</strong>
+                      <div className="monthItems">
+                        {dayLogs.map((log) => (
+                          <button key={log.id} type="button" className="calendarLogBar" title={log.summary || log.project || 'Daily Log'} onClick={() => onOpenDailyLog(log)}>
+                            {log.summary || log.project || 'Daily Log'}
+                          </button>
+                        ))}
+                        {logCount > dayLogs.length && <span className="logMarker">+{logCount - dayLogs.length} more log{logCount - dayLogs.length > 1 ? 's' : ''}</span>}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {weekTasks.length > 0 && (
+                <div className="monthTaskOverlay" style={{ gridTemplateRows: `repeat(${weekTasks.length}, 18px)` }}>
+                  {weekTasks.map((task, rowIndex) => {
+                    const segment = getTaskSegmentsForWeek(task, week);
+                    if (!segment) return null;
+                    return (
+                      <button
+                        key={`${task.id}-${weekIndex}`}
+                        type="button"
+                        className={`calendarTaskBar monthSpanTask ${getTaskTone(task)}`}
+                        style={{ gridColumn: `${segment.startCol} / ${segment.endCol}`, gridRow: rowIndex + 1 }}
+                        title={`${task.title} • ${getTaskDateLabel(task)}`}
+                        onClick={() => onOpenTask(task)}
+                      >
+                        {task.title}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
