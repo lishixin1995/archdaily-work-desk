@@ -4,6 +4,8 @@
 
 :root {
   color-scheme: light;
+  --calendar-width: clamp(360px, 30vw, 430px);
+  --side-gap: clamp(20px, 3vw, 44px);
   --bg: #f4f1ea;
   --paper: #fffaf0;
   --paper-strong: #fff3d6;
@@ -41,10 +43,12 @@ button {
 }
 
 .shell {
-  width: min(1060px, calc(100vw - 520px));
-  margin: 34px auto 80px;
-  margin-left: clamp(24px, 6vw, 96px);
-  margin-right: 480px;
+  width: auto;
+  max-width: 1060px;
+  margin-top: 34px;
+  margin-bottom: 80px;
+  margin-left: var(--side-gap);
+  margin-right: calc(var(--calendar-width) + var(--side-gap) + 28px);
 }
 
 .hero {
@@ -327,10 +331,10 @@ pre {
 
 .calendarDock {
   position: fixed;
-  top: 28px;
-  right: 28px;
-  width: 430px;
-  height: calc(100vh - 56px);
+  top: var(--side-gap);
+  right: var(--side-gap);
+  width: var(--calendar-width);
+  height: calc(100vh - (var(--side-gap) * 2));
   z-index: 20;
   padding: 18px;
   overflow: auto;
@@ -455,7 +459,17 @@ pre {
   text-decoration: line-through;
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1450px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .todayCard {
+    max-width: 320px;
+  }
+}
+
+@media (max-width: 1240px) {
   .calendarDock {
     position: sticky;
     top: 0;
@@ -477,6 +491,7 @@ pre {
 
   .shell {
     width: min(1180px, calc(100% - 32px));
+    max-width: 1180px;
     margin: 24px auto 80px;
   }
 }

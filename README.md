@@ -31,3 +31,10 @@ Vercel settings:
 - Framework Preset: Vite
 - Build Command: npm run build
 - Output Directory: dist
+
+
+## V4 update
+
+- Fixed browser resizing issue where the side calendar could overlap the main workspace.
+- Main content now automatically leaves safe space for the fixed right calendar.
+- At narrower browser widths, the calendar switches to a top sticky layout instead of covering the desk content.
