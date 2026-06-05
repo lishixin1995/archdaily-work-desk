@@ -964,6 +964,158 @@ pre {
   color: white;
 }
 
+
+/* Compact library system for Code Notes, Revit Logs, and Prompt Library */
+
+.filterBar,
+.libraryToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.42);
+  margin-bottom: 18px;
+}
+
+.filterBar label,
+.libraryToolbar label {
+  min-width: 180px;
+}
+
+.checkLine {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.checkLine input {
+  width: auto;
+  accent-color: var(--accent);
+}
+
+.inlineCheck {
+  min-width: auto !important;
+}
+
+.libraryCount,
+.copyMessage {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.copyMessage {
+  color: var(--accent);
+}
+
+.libraryGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 14px;
+}
+
+.wideLibrary {
+  grid-column: 1 / -1;
+}
+
+.libraryCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 190px;
+  border: 1px solid var(--line);
+  border-left: 6px solid rgba(155, 92, 46, 0.55);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.64);
+  padding: 16px;
+  cursor: zoom-in;
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.libraryCard:hover {
+  transform: translateY(-2px);
+  border-color: rgba(155, 92, 46, 0.35);
+  box-shadow: 0 16px 38px rgba(49, 35, 20, 0.1);
+}
+
+.revitLibraryCard {
+  border-left-color: rgba(79, 111, 143, 0.7);
+}
+
+.promptCard {
+  border-left-color: rgba(138, 111, 61, 0.72);
+}
+
+.libraryCard h3 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+}
+
+.libraryMeta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.libraryPreview {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.copyButton {
+  margin-top: auto;
+  width: fit-content;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: white;
+  color: var(--ink);
+  font-weight: 900;
+}
+
+.copyButton:hover {
+  border-color: rgba(155, 92, 46, 0.45);
+}
+
+.favoritePill {
+  background: #fff3d6;
+  color: var(--accent-dark);
+}
+
+.promptFavoriteInput {
+  align-self: end;
+  min-height: 45px;
+}
+
+.modalActionRight {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.libraryModal .modalSection p {
+  max-height: 360px;
+  overflow: auto;
+}
+
 @media (max-width: 1500px) {
   .app {
     width: min(100% - 36px, var(--page-max));
@@ -1028,7 +1180,8 @@ pre {
 
 @media (max-width: 640px) {
   .modalActions,
-  .logCardFooter {
+  .logCardFooter,
+  .modalActionRight {
     flex-direction: column;
     align-items: stretch;
   }

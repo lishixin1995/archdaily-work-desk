@@ -879,8 +879,22 @@ function TaskDashboard({ data, setData, searchQuery }) {
     status: "Not Started",
     priority: "Medium"
   });
+  const [projectFilter, setProjectFilter] = useState("All");
+  const [priorityFilter, setPriorityFilter] = useState("All");
+  const [hideDone, setHideDone] = useState(false);
 
-  const filteredTasks = data.tasks.filter((task) => searchRecord(task, searchQuery));
+  const projects = useMemo(() => {
+    const unique = new Set(data.tasks.map((task) => task.project).filter(Boolean));
+    return ["All", ...Array.from(unique).sort((a, b) => a.localeCompare(b))];
+  }, [data.tasks]);
+
+  const filteredTasks = data.tasks.filter((task) => {
+    const matchesSearch = searchRecord(task, searchQuery);
+    const matchesProject = projectFilter === "All" || task.project === projectFilter;
+    const matchesPriority = priorityFilter === "All" || task.priority === priorityFilter;
+    const matchesDone = !hideDone || task.status !== "Done";
+    return matchesSearch && matchesProject && matchesPriority && matchesDone;
+  });
 
   function addTask(e) {
     e.preventDefault();
@@ -930,8 +944,27 @@ function TaskDashboard({ data, setData, searchQuery }) {
         <button className="primary wide" type="submit">Add Task</button>
       </form>
 
+      <div className="filterBar">
+        <label>
+          Project filter
+          <select value={projectFilter} onChange={(e) => setProjectFilter(e.target.value)}>
+            {projects.map((project) => <option key={project}>{project}</option>)}
+          </select>
+        </label>
+        <label>
+          Priority filter
+          <select value={priorityFilter} onChange={(e) => setPriorityFilter(e.target.value)}>
+            {['All', 'Low', 'Medium', 'High', 'Urgent'].map((priority) => <option key={priority}>{priority}</option>)}
+          </select>
+        </label>
+        <label className="checkLine">
+          <input type="checkbox" checked={hideDone} onChange={(e) => setHideDone(e.target.checked)} />
+          Hide Done
+        </label>
+      </div>
+
       <div className="taskBoard">
-        {["Not Started", "In Progress", "Waiting", "Done"].map((status) => (
+        {["Not Started", "In Progress", "Waiting", "Done"].filter((status) => !(hideDone && status === "Done")).map((status) => (
           <section key={status} className="taskColumn">
             <h3>{status}</h3>
             {filteredTasks.filter((task) => task.status === status).map((task) => (
@@ -958,16 +991,24 @@ function TaskDashboard({ data, setData, searchQuery }) {
   );
 }
 
+
 function CodeNotes({ data, setData, searchQuery }) {
   const [form, setForm] = useState({
     title: "",
+    category: "Building Code",
     codeSource: "",
     section: "",
     note: "",
     projectUse: ""
   });
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [openNote, setOpenNote] = useState(null);
+  const categories = ["All", "Zoning", "Building Code", "DOB", "DOT / BPP", "Accessibility", "Energy Code", "Egress", "Reusable Language", "Other"];
 
-  const filteredNotes = data.codeNotes.filter((item) => searchRecord(item, searchQuery));
+  const filteredNotes = data.codeNotes.filter((item) => {
+    const noteCategory = item.category || "Other";
+    return searchRecord(item, searchQuery) && (categoryFilter === "All" || noteCategory === categoryFilter);
+  });
 
   function addNote(e) {
     e.preventDefault();
@@ -976,15 +1017,26 @@ function CodeNotes({ data, setData, searchQuery }) {
       ...data,
       codeNotes: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...form }, ...data.codeNotes]
     });
-    setForm({ title: "", codeSource: "", section: "", note: "", projectUse: "" });
+    setForm({ title: "", category: "Building Code", codeSource: "", section: "", note: "", projectUse: "" });
+  }
+
+  function deleteNote(id) {
+    setData({ ...data, codeNotes: data.codeNotes.filter((x) => x.id !== id) });
+    if (openNote?.id === id) setOpenNote(null);
   }
 
   return (
-    <Workspace title="Code / DOB Quick Notes" subtitle="Fast place to record code sections, DOB comments, zoning notes, and reusable language.">
+    <Workspace title="Code / DOB Quick Notes" subtitle="A compact code library for sections, DOB notes, zoning reminders, and reusable language.">
       <form className="formGrid" onSubmit={addNote}>
         <label>
           Title
           <input placeholder="Wheelchair seating, rear yard, PAR..." value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
+        </label>
+        <label>
+          Category
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {categories.filter((item) => item !== "All").map((category) => <option key={category}>{category}</option>)}
+          </select>
         </label>
         <label>
           Source
@@ -1005,25 +1057,43 @@ function CodeNotes({ data, setData, searchQuery }) {
         <button className="primary wide" type="submit">Save Code Note</button>
       </form>
 
-      <CardList
-        items={filteredNotes}
-        empty={searchQuery ? "No code notes match your search." : "No code notes yet."}
-        render={(item) => (
-          <article className="card" key={item.id}>
-            <div className="cardHead">
+      <LibraryToolbar label="Filter by category" value={categoryFilter} onChange={setCategoryFilter} options={categories} count={filteredNotes.length} />
+
+      <div className="libraryGrid">
+        {filteredNotes.length === 0 ? (
+          <div className="empty wideLibrary">{searchQuery ? "No code notes match your search." : "No code notes yet."}</div>
+        ) : (
+          filteredNotes.map((item) => (
+            <article key={item.id} className="libraryCard" onClick={() => setOpenNote(item)} role="button" tabIndex={0} onKeyDown={(event) => event.key === "Enter" && setOpenNote(item)}>
+              <div className="pillRow">
+                <span className="pill">{item.category || "Other"}</span>
+                {item.section && <span className="pill muted">{item.section}</span>}
+              </div>
               <h3>{item.title || "Untitled Code Note"}</h3>
-              <span>{item.codeSource}</span>
-            </div>
-            {item.section && <p><strong>Section:</strong> {item.section}</p>}
-            <p>{item.note}</p>
-            {item.projectUse && <p><strong>Use:</strong> {item.projectUse}</p>}
-            <DeleteButton onClick={() => setData({ ...data, codeNotes: data.codeNotes.filter((x) => x.id !== item.id) })} />
-          </article>
+              <p className="libraryMeta">{item.codeSource || "No source"}</p>
+              <p className="libraryPreview">{item.note || "No note yet."}</p>
+            </article>
+          ))
         )}
-      />
+      </div>
+
+      {openNote && (
+        <LibraryModal
+          eyebrow="Code / DOB Quick Note"
+          title={openNote.title || "Untitled Code Note"}
+          subtitle={`${openNote.category || "Other"}${openNote.codeSource ? ` · ${openNote.codeSource}` : ""}${openNote.section ? ` · ${openNote.section}` : ""}`}
+          sections={[
+            ["Note", openNote.note],
+            ["Project use / Reminder", openNote.projectUse]
+          ]}
+          onClose={() => setOpenNote(null)}
+          onDelete={() => deleteNote(openNote.id)}
+        />
+      )}
     </Workspace>
   );
 }
+
 
 function RevitLog({ data, setData, searchQuery }) {
   const [form, setForm] = useState({
@@ -1033,8 +1103,13 @@ function RevitLog({ data, setData, searchQuery }) {
     solution: "",
     keywords: ""
   });
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [openLog, setOpenLog] = useState(null);
+  const categories = ["All", "Modeling", "Family", "View / Sheet", "Link / Coordinate", "Schedule", "Export / Print"];
 
-  const filteredLogs = data.revitLogs.filter((item) => searchRecord(item, searchQuery));
+  const filteredLogs = data.revitLogs.filter((item) => {
+    return searchRecord(item, searchQuery) && (categoryFilter === "All" || item.category === categoryFilter);
+  });
 
   function addLog(e) {
     e.preventDefault();
@@ -1046,8 +1121,13 @@ function RevitLog({ data, setData, searchQuery }) {
     setForm({ issue: "", project: "", category: "Modeling", solution: "", keywords: "" });
   }
 
+  function deleteLog(id) {
+    setData({ ...data, revitLogs: data.revitLogs.filter((x) => x.id !== id) });
+    if (openLog?.id === id) setOpenLog(null);
+  }
+
   return (
-    <Workspace title="Revit Troubleshoot Log" subtitle="Keep Revit problems and fixes searchable for future projects.">
+    <Workspace title="Revit Troubleshoot Log" subtitle="A searchable troubleshooting database for Revit problems and fixes.">
       <form className="formGrid" onSubmit={addLog}>
         <label>
           Issue
@@ -1060,12 +1140,7 @@ function RevitLog({ data, setData, searchQuery }) {
         <label>
           Category
           <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-            <option>Modeling</option>
-            <option>Family</option>
-            <option>View / Sheet</option>
-            <option>Link / Coordinate</option>
-            <option>Schedule</option>
-            <option>Export / Print</option>
+            {categories.filter((item) => item !== "All").map((category) => <option key={category}>{category}</option>)}
           </select>
         </label>
         <label>
@@ -1079,35 +1154,62 @@ function RevitLog({ data, setData, searchQuery }) {
         <button className="primary wide" type="submit">Save Revit Log</button>
       </form>
 
-      <CardList
-        items={filteredLogs}
-        empty={searchQuery ? "No Revit logs match your search." : "No Revit logs yet."}
-        render={(item) => (
-          <article className="card" key={item.id}>
-            <div className="cardHead">
+      <LibraryToolbar label="Filter by category" value={categoryFilter} onChange={setCategoryFilter} options={categories} count={filteredLogs.length} />
+
+      <div className="libraryGrid">
+        {filteredLogs.length === 0 ? (
+          <div className="empty wideLibrary">{searchQuery ? "No Revit logs match your search." : "No Revit logs yet."}</div>
+        ) : (
+          filteredLogs.map((item) => (
+            <article key={item.id} className="libraryCard revitLibraryCard" onClick={() => setOpenLog(item)} role="button" tabIndex={0} onKeyDown={(event) => event.key === "Enter" && setOpenLog(item)}>
+              <div className="pillRow">
+                <span className="pill">{item.category}</span>
+                {item.keywords && <span className="pill muted">{item.keywords}</span>}
+              </div>
               <h3>{item.issue}</h3>
-              <span>{item.category}</span>
-            </div>
-            {item.project && <p><strong>Project:</strong> {item.project}</p>}
-            {item.solution && <p>{item.solution}</p>}
-            {item.keywords && <p><strong>Keywords:</strong> {item.keywords}</p>}
-            <DeleteButton onClick={() => setData({ ...data, revitLogs: data.revitLogs.filter((x) => x.id !== item.id) })} />
-          </article>
+              <p className="libraryMeta">{item.project || "No project"}</p>
+              <p className="libraryPreview">{item.solution || "No solution saved yet."}</p>
+            </article>
+          ))
         )}
-      />
+      </div>
+
+      {openLog && (
+        <LibraryModal
+          eyebrow="Revit Troubleshoot Log"
+          title={openLog.issue}
+          subtitle={`${openLog.category}${openLog.project ? ` · ${openLog.project}` : ""}${openLog.keywords ? ` · ${openLog.keywords}` : ""}`}
+          sections={[["Solution", openLog.solution]]}
+          onClose={() => setOpenLog(null)}
+          onDelete={() => deleteLog(openLog.id)}
+        />
+      )}
     </Workspace>
   );
 }
 
+
 function PromptLibrary({ data, setData, searchQuery }) {
   const [form, setForm] = useState({
     title: "",
+    category: "Rendering",
     tool: "",
     prompt: "",
-    notes: ""
+    notes: "",
+    favorite: false
   });
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [showFavorites, setShowFavorites] = useState(false);
+  const [openPrompt, setOpenPrompt] = useState(null);
+  const [copyMessage, setCopyMessage] = useState("");
+  const categories = ["All", "Rendering", "Video", "Revit / CAD", "Email", "Code", "Portfolio", "Website", "Other"];
 
-  const filteredPrompts = data.prompts.filter((item) => searchRecord(item, searchQuery));
+  const filteredPrompts = data.prompts.filter((item) => {
+    const promptCategory = item.category || "Other";
+    const matchesCategory = categoryFilter === "All" || promptCategory === categoryFilter;
+    const matchesFavorite = !showFavorites || item.favorite;
+    return searchRecord(item, searchQuery) && matchesCategory && matchesFavorite;
+  });
 
   function addPrompt(e) {
     e.preventDefault();
@@ -1116,19 +1218,44 @@ function PromptLibrary({ data, setData, searchQuery }) {
       ...data,
       prompts: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...form }, ...data.prompts]
     });
-    setForm({ title: "", tool: "", prompt: "", notes: "" });
+    setForm({ title: "", category: "Rendering", tool: "", prompt: "", notes: "", favorite: false });
+  }
+
+  function deletePrompt(id) {
+    setData({ ...data, prompts: data.prompts.filter((x) => x.id !== id) });
+    if (openPrompt?.id === id) setOpenPrompt(null);
+  }
+
+  async function copyPrompt(promptText) {
+    try {
+      await navigator.clipboard.writeText(promptText || "");
+      setCopyMessage("Prompt copied.");
+      setTimeout(() => setCopyMessage(""), 1600);
+    } catch {
+      setCopyMessage("Could not copy automatically.");
+    }
   }
 
   return (
-    <Workspace title="AI Prompt Library" subtitle="Save rendering, video, code, and workflow prompts that worked well.">
+    <Workspace title="AI Prompt Library" subtitle="Compact prompt cards with quick copy and full prompt modal.">
       <form className="formGrid" onSubmit={addPrompt}>
         <label>
           Title
           <input placeholder="Photo-realistic rainy day render..." value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
         </label>
         <label>
+          Category
+          <select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
+            {categories.filter((item) => item !== "All").map((category) => <option key={category}>{category}</option>)}
+          </select>
+        </label>
+        <label>
           Tool / Model
           <input placeholder="ChatGPT, Seedance, Vercel, Gemini..." value={form.tool} onChange={(e) => setForm({ ...form, tool: e.target.value })} />
+        </label>
+        <label className="checkLine promptFavoriteInput">
+          <input type="checkbox" checked={form.favorite} onChange={(e) => setForm({ ...form, favorite: e.target.checked })} />
+          Favorite
         </label>
         <label className="wide">
           Prompt
@@ -1141,24 +1268,106 @@ function PromptLibrary({ data, setData, searchQuery }) {
         <button className="primary wide" type="submit">Save Prompt</button>
       </form>
 
-      <CardList
-        items={filteredPrompts}
-        empty={searchQuery ? "No prompts match your search." : "No prompts yet."}
-        render={(item) => (
-          <article className="card" key={item.id}>
-            <div className="cardHead">
+      <LibraryToolbar label="Filter by category" value={categoryFilter} onChange={setCategoryFilter} options={categories} count={filteredPrompts.length}>
+        <label className="checkLine inlineCheck">
+          <input type="checkbox" checked={showFavorites} onChange={(e) => setShowFavorites(e.target.checked)} />
+          Favorites only
+        </label>
+        {copyMessage && <span className="copyMessage">{copyMessage}</span>}
+      </LibraryToolbar>
+
+      <div className="libraryGrid">
+        {filteredPrompts.length === 0 ? (
+          <div className="empty wideLibrary">{searchQuery ? "No prompts match your search." : "No prompts yet."}</div>
+        ) : (
+          filteredPrompts.map((item) => (
+            <article key={item.id} className="libraryCard promptCard" onClick={() => setOpenPrompt(item)} role="button" tabIndex={0} onKeyDown={(event) => event.key === "Enter" && setOpenPrompt(item)}>
+              <div className="pillRow">
+                <span className="pill">{item.category || "Other"}</span>
+                {item.favorite && <span className="pill favoritePill">★ Favorite</span>}
+                {item.tool && <span className="pill muted">{item.tool}</span>}
+              </div>
               <h3>{item.title || "Untitled Prompt"}</h3>
-              <span>{item.tool}</span>
-            </div>
-            <pre>{item.prompt}</pre>
-            {item.notes && <p><strong>Notes:</strong> {item.notes}</p>}
-            <DeleteButton onClick={() => setData({ ...data, prompts: data.prompts.filter((x) => x.id !== item.id) })} />
-          </article>
+              <p className="libraryPreview">{item.prompt || "No prompt text."}</p>
+              <button type="button" className="copyButton" onClick={(event) => { event.stopPropagation(); copyPrompt(item.prompt); }}>Copy Prompt</button>
+            </article>
+          ))
         )}
-      />
+      </div>
+
+      {openPrompt && (
+        <LibraryModal
+          eyebrow="AI Prompt Library"
+          title={openPrompt.title || "Untitled Prompt"}
+          subtitle={`${openPrompt.category || "Other"}${openPrompt.tool ? ` · ${openPrompt.tool}` : ""}${openPrompt.favorite ? " · Favorite" : ""}`}
+          sections={[
+            ["Prompt", openPrompt.prompt],
+            ["Notes", openPrompt.notes]
+          ]}
+          onClose={() => setOpenPrompt(null)}
+          onDelete={() => deletePrompt(openPrompt.id)}
+          extraAction={<button type="button" className="primary" onClick={() => copyPrompt(openPrompt.prompt)}>Copy Prompt</button>}
+        />
+      )}
     </Workspace>
   );
 }
+
+function LibraryToolbar({ label, value, onChange, options, count, children }) {
+  return (
+    <div className="libraryToolbar">
+      <label>
+        {label}
+        <select value={value} onChange={(e) => onChange(e.target.value)}>
+          {options.map((option) => <option key={option}>{option}</option>)}
+        </select>
+      </label>
+      <span className="libraryCount">{count} item{count === 1 ? "" : "s"}</span>
+      {children}
+    </div>
+  );
+}
+
+function LibraryModal({ eyebrow, title, subtitle, sections, onClose, onDelete, extraAction }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modalOverlay" onClick={onClose}>
+      <article className="logModal libraryModal" onClick={(event) => event.stopPropagation()}>
+        <div className="modalTop">
+          <div>
+            <p className="eyebrow">{eyebrow}</p>
+            <h2>{title}</h2>
+            {subtitle && <p className="modalDate">{subtitle}</p>}
+          </div>
+          <button type="button" className="modalClose" onClick={onClose}>×</button>
+        </div>
+
+        {sections.filter(([, content]) => content).map(([heading, content]) => (
+          <div className="modalSection" key={heading}>
+            <h3>{heading}</h3>
+            <p>{content}</p>
+          </div>
+        ))}
+
+        <div className="modalActions">
+          <button type="button" className="delete" onClick={onDelete}>Delete</button>
+          <div className="modalActionRight">
+            {extraAction}
+            <button type="button" className="primary" onClick={onClose}>Done</button>
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 
 function Workspace({ title, subtitle, children }) {
   return (

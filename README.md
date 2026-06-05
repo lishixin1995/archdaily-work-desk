@@ -2,14 +2,14 @@
 
 A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, search, PDF report export, and a fixed calendar.
 
-## V8 updates
+## V9 updates
 
-- Daily Desk saved logs now show as a carousel instead of endlessly extending down the page.
-- Daily log cards can be clicked to open a full reading modal.
-- Long daily notes are clamped in preview but fully readable in the modal.
-- Daily logs now reflect on the calendar as small log markers.
-- Today and Year calendar views also show daily log counts.
-- Search, PDF report export, task color system, and calendar Today / Week / Month / Year views remain.
+- Calendar system is preserved, including Today / Week / Month / Year views and urgent / high / progress / waiting / done task colors.
+- Task Dashboard keeps the Kanban board and adds Project filter, Priority filter, and Hide Done.
+- Code / DOB Quick Notes is now a compact library with category filter and click-to-open full modal.
+- Revit Troubleshoot Log is now a compact troubleshooting library with category filter and click-to-open full modal.
+- AI Prompt Library is now a compact prompt card library with category filter, Favorites only toggle, click-to-open full modal, and Copy Prompt button.
+- Daily Log carousel and calendar log markers from V8 remain.
 
 ## Deploy
 
