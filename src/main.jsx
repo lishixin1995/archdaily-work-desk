@@ -918,23 +918,51 @@ function TodayCalendarView({ date, tasks, dailyLogs, onOpenTask, onOpenDailyLog 
 function WeekCalendarView({ date, tasks, dailyLogs, onOpenTask, onOpenDailyLog }) {
   const weekDays = useMemo(() => getWeekDays(date), [date]);
   const weekTasks = sortFocusTasks(tasks.filter((task) => task.status !== 'Done' && getTaskSegmentsForWeek(task, weekDays)));
+  const weekBarTasks = weekTasks.slice(0, 4);
+  const dayPaddingTop = 52 + (weekBarTasks.length * 24);
+
   return (
     <div className="weekCalendar">
-      <div className="weekDays">
-        {weekDays.map((day) => {
-          const key = formatDate(day);
-          const dayTasks = getTasksForDate(tasks, key).slice(0, 3);
-          const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 3);
-          return (
-            <div key={key} className="weekDay">
-              <strong>{day.toLocaleDateString(undefined, { weekday: 'short' })}</strong>
-              <span>{day.getDate()}</span>
-              {dayTasks.map((task) => <button key={task.id} type="button" className={`calendarTaskBar ${getTaskTone(task)}`} onClick={() => onOpenTask(task)}>{task.title}</button>)}
-              {dayLogs.map((log) => <button key={log.id} type="button" className="calendarLogBar" onClick={() => onOpenDailyLog(log)}>{log.summary || log.project || 'Daily Log'}</button>)}
-            </div>
-          );
-        })}
+      <div className="weekTimeline">
+        <div className="weekDays weekDayCells">
+          {weekDays.map((day) => {
+            const key = formatDate(day);
+            const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 3);
+            return (
+              <div key={key} className="weekDay" style={{ paddingTop: `${dayPaddingTop}px` }}>
+                <div className="weekDayTop">
+                  <strong>{day.toLocaleDateString(undefined, { weekday: 'short' })}</strong>
+                  <span>{day.getDate()}</span>
+                </div>
+                {dayLogs.map((log) => <button key={log.id} type="button" className="calendarLogBar" onClick={() => onOpenDailyLog(log)}>{log.summary || log.project || 'Daily Log'}</button>)}
+              </div>
+            );
+          })}
+        </div>
+
+        {weekBarTasks.length > 0 && (
+          <div className="weekTaskOverlay" style={{ gridTemplateRows: `repeat(${weekBarTasks.length}, 20px)` }}>
+            {weekBarTasks.map((task, rowIndex) => {
+              const segment = getTaskSegmentsForWeek(task, weekDays);
+              if (!segment) return null;
+              return (
+                <button
+                  key={task.id}
+                  type="button"
+                  className={`calendarTaskBar weekSpanTask ${getTaskTone(task)}`}
+                  style={{ gridColumn: `${segment.startCol} / ${segment.endCol}`, gridRow: rowIndex + 1 }}
+                  title={task.title}
+                  onClick={() => onOpenTask(task)}
+                >
+                  {task.title}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
+
+      {weekTasks.length > weekBarTasks.length && <div className="logMarker weekMoreMarker">+{weekTasks.length - weekBarTasks.length} more task{weekTasks.length - weekBarTasks.length > 1 ? 's' : ''} in focus board</div>}
       <div className="miniSectionTitle">This Week Focus</div>
       <FocusTaskBoard tasks={weekTasks} onOpenTask={onOpenTask} emptyText="No active tasks scheduled for this week." />
     </div>

@@ -482,6 +482,13 @@ textarea { min-height: 122px; resize: vertical; }
 .focusDate h3 { margin: 0 0 4px; font-size: 22px; }
 .focusDate p { margin: 0; color: var(--muted); }
 .weekDays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.weekTimeline {
+  position: relative;
+}
+.weekDayCells {
+  position: relative;
+  z-index: 1;
+}
 .weekDay {
   min-height: 132px;
   border: 1px solid var(--line);
@@ -491,9 +498,43 @@ textarea { min-height: 122px; resize: vertical; }
   display: grid;
   gap: 6px;
   align-content: start;
+  position: relative;
+  overflow: hidden;
+}
+.weekDayTop {
+  position: absolute;
+  top: 10px;
+  left: 8px;
+  right: 8px;
+  display: grid;
+  gap: 4px;
+  z-index: 3;
 }
 .weekDay strong { font-size: 12px; color: var(--muted); }
 .weekDay span { font-size: 18px; font-weight: 900; }
+.weekTaskOverlay {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 52px;
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 8px;
+  row-gap: 4px;
+  pointer-events: none;
+  z-index: 5;
+}
+.weekSpanTask {
+  width: auto;
+  min-height: 20px;
+  padding: 4px 8px;
+  pointer-events: auto;
+  box-shadow: 0 1px 0 rgba(0,0,0,.08);
+}
+.weekMoreMarker {
+  width: fit-content;
+  margin-top: 4px;
+}
 .miniSectionTitle { font-size: 13px; font-weight: 900; color: var(--warmDark); text-transform: uppercase; letter-spacing: .08em; }
 .focusColumns { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 9px; }
 .focusColumn { min-width: 0; display: grid; gap: 8px; align-content: start; }
@@ -663,6 +704,8 @@ textarea { min-height: 122px; resize: vertical; }
   .pageShell { grid-template-columns: minmax(0, 1fr) 450px; }
   .focusColumns { grid-template-columns: 1fr; }
   .weekDays { grid-template-columns: repeat(2, 1fr); }
+  .weekTaskOverlay { display: none; }
+  .weekDay { padding-top: 48px !important; }
   .yearGrid { grid-template-columns: repeat(2, 1fr); }
 }
 
