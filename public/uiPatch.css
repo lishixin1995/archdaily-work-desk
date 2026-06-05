@@ -1,0 +1,43 @@
+.dateFilterRibbon {
+  grid-template-columns: repeat(2, minmax(180px, 1fr)) repeat(4, auto) !important;
+  gap: 14px !important;
+  align-items: end !important;
+  margin: 18px 0 30px !important;
+  padding: 18px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 22px !important;
+  background: rgba(255, 250, 243, 0.72) !important;
+  box-shadow: 0 12px 28px rgba(64, 43, 26, 0.07) !important;
+}
+
+.dateFilterRibbon + .cardForm {
+  margin-top: 0 !important;
+}
+
+.dateFilterRibbon label {
+  min-width: 180px !important;
+}
+
+.dateFilterRibbon button {
+  min-width: 132px !important;
+  height: 44px !important;
+}
+
+.topSearch {
+  margin-bottom: 18px !important;
+}
+
+.cardForm {
+  clear: both !important;
+}
+
+.dailyCarouselControls,
+.genericCarouselControls {
+  margin: 12px 0 18px !important;
+}
+
+@media (max-width: 1250px) {
+  .dateFilterRibbon {
+    grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+  }
+}
