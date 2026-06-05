@@ -23,10 +23,9 @@
         ]
       }).finally(() => {
         import('/src/main.jsx').then(() => {
-          import('/src/uiEnhance.js');
-          const script = document.createElement('script');
-          script.src = '/uiFilterFix.js';
-          document.body.appendChild(script);
+          import('/src/uiEnhance.js').then(() => {
+            import('/src/uiFinalFix.js');
+          });
         });
       });
     </script>
