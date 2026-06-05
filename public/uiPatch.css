@@ -40,8 +40,41 @@
   margin: 12px 0 18px !important;
 }
 
+/* Saved Daily Log area: stretch the saved-card zone to the same width as the form. */
+.libraryGrid.oneThird {
+  width: 100% !important;
+  min-height: 270px !important;
+  margin-top: 22px !important;
+  padding: 20px 130px 24px 20px !important;
+  border: 1px solid rgba(124, 91, 56, 0.14) !important;
+  border-radius: 24px !important;
+  background: rgba(255, 250, 243, 0.42) !important;
+  box-shadow: 0 18px 42px rgba(64, 43, 26, 0.055) !important;
+  align-items: start !important;
+  box-sizing: border-box !important;
+}
+
+.libraryGrid.oneThird .libraryCard {
+  max-width: 380px !important;
+}
+
+.safeSlideOverlay {
+  width: auto !important;
+  min-width: 150px !important;
+  justify-content: flex-end !important;
+  transform: translateY(18px) !important;
+}
+
 @media (max-width: 1250px) {
   .dateFilterRibbon {
     grid-template-columns: repeat(2, minmax(180px, 1fr)) !important;
+  }
+
+  .libraryGrid.oneThird {
+    padding-right: 24px !important;
+  }
+
+  .safeSlideOverlay {
+    transform: translateY(8px) !important;
   }
 }
