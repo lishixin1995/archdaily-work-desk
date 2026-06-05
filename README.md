@@ -1,10 +1,17 @@
 # ARCH DAILY WORK DESK
 
-A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, and a pinned monthly calendar.
+A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, and a fixed monthly calendar.
 
 ## Current version
 
-This starter version stores data in your browser with localStorage.
+This version stores data in your browser with localStorage.
+
+## V3 updates
+
+- Calendar is fixed on the right side of the desktop layout.
+- Tasks can have both Start date and Due date.
+- Calendar task bars stretch continuously across each week from start date through due date.
+- Existing tasks with only a due date still show on that due date.
 
 ## Pages
 
@@ -13,11 +20,11 @@ This starter version stores data in your browser with localStorage.
 - Code / DOB Quick Notes
 - Revit Troubleshoot Log
 - AI Prompt Library
-- Monthly Calendar pinned at top
+- Fixed Monthly Calendar
 
 ## Deploy
 
-Upload these files to GitHub, then connect the repository to Vercel.
+Upload these files to GitHub, then Vercel will redeploy automatically.
 
 Vercel settings:
 

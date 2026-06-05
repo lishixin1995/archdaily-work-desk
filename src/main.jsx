@@ -26,31 +26,94 @@ function saveData(data) {
 }
 
 function formatDate(date) {
-  return date.toISOString().slice(0, 10);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function parseLocalDate(dateString) {
+  if (!dateString) return null;
+  const [year, month, day] = dateString.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return new Date(year, month - 1, day);
+}
+
+function addDays(date, amount) {
+  const next = new Date(date);
+  next.setDate(next.getDate() + amount);
+  return next;
 }
 
 function monthLabel(date) {
   return date.toLocaleString(undefined, { month: "long", year: "numeric" });
 }
 
-function getMonthDays(currentDate) {
+function getTaskDateKeys(task) {
+  const start = parseLocalDate(task.startDate || task.dueDate);
+  const end = parseLocalDate(task.dueDate || task.startDate);
+  if (!start || !end) return [];
+
+  const from = start <= end ? start : end;
+  const to = start <= end ? end : start;
+  const keys = [];
+
+  let cursor = new Date(from);
+  let guard = 0;
+  while (cursor <= to && guard < 370) {
+    keys.push(formatDate(cursor));
+    cursor = addDays(cursor, 1);
+    guard += 1;
+  }
+  return keys;
+}
+
+function getTaskDateLabel(task) {
+  if (task.startDate && task.dueDate && task.startDate !== task.dueDate) {
+    return `${task.startDate} → ${task.dueDate}`;
+  }
+  return task.dueDate || task.startDate || "No date";
+}
+
+function getMonthWeeks(currentDate) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const first = new Date(year, month, 1);
-  const startDay = first.getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const start = addDays(first, -first.getDay());
 
-  const cells = [];
-  for (let i = 0; i < startDay; i++) {
-    cells.push(null);
+  const weeks = [];
+  let cursor = new Date(start);
+
+  for (let week = 0; week < 6; week++) {
+    const days = [];
+    for (let day = 0; day < 7; day++) {
+      days.push(new Date(cursor));
+      cursor = addDays(cursor, 1);
+    }
+    weeks.push(days);
   }
-  for (let day = 1; day <= daysInMonth; day++) {
-    cells.push(new Date(year, month, day));
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
-  return cells;
+
+  return weeks;
+}
+
+function getTaskSegmentsForWeek(task, weekDays) {
+  const start = parseLocalDate(task.startDate || task.dueDate);
+  const end = parseLocalDate(task.dueDate || task.startDate);
+  if (!start || !end) return null;
+
+  const taskStart = start <= end ? start : end;
+  const taskEnd = start <= end ? end : start;
+  const weekStart = weekDays[0];
+  const weekEnd = weekDays[6];
+
+  if (taskEnd < weekStart || taskStart > weekEnd) return null;
+
+  const visibleStart = taskStart > weekStart ? taskStart : weekStart;
+  const visibleEnd = taskEnd < weekEnd ? taskEnd : weekEnd;
+  const startCol = visibleStart.getDay() + 1;
+  const endCol = visibleEnd.getDay() + 2;
+
+  return { startCol, endCol };
 }
 
 function App() {
@@ -80,13 +143,6 @@ function App() {
 
   return (
     <div className="app">
-      <PinnedCalendar
-        currentDate={currentDate}
-        calendarMonth={calendarMonth}
-        setCalendarMonth={setCalendarMonth}
-        tasks={data.tasks}
-      />
-
       <main className="shell">
         <section className="hero">
           <div>
@@ -117,21 +173,30 @@ function App() {
         {activeTab === "Revit Troubleshoot Log" && <RevitLog data={data} setData={setData} />}
         {activeTab === "AI Prompt Library" && <PromptLibrary data={data} setData={setData} />}
       </main>
+
+      <PinnedCalendar
+        currentDate={currentDate}
+        calendarMonth={calendarMonth}
+        setCalendarMonth={setCalendarMonth}
+        tasks={data.tasks}
+      />
     </div>
   );
 }
 
 function PinnedCalendar({ currentDate, calendarMonth, setCalendarMonth, tasks }) {
-  const days = useMemo(() => getMonthDays(calendarMonth), [calendarMonth]);
+  const weeks = useMemo(() => getMonthWeeks(calendarMonth), [calendarMonth]);
   const today = formatDate(currentDate);
+  const currentMonth = calendarMonth.getMonth();
 
-  const tasksByDate = useMemo(() => {
-    return tasks.reduce((acc, task) => {
-      if (!task.dueDate) return acc;
-      if (!acc[task.dueDate]) acc[task.dueDate] = [];
-      acc[task.dueDate].push(task);
-      return acc;
-    }, {});
+  const activeTasks = useMemo(() => {
+    return tasks
+      .filter((task) => task.startDate || task.dueDate)
+      .sort((a, b) => {
+        const aDate = a.startDate || a.dueDate || "";
+        const bDate = b.startDate || b.dueDate || "";
+        return aDate.localeCompare(bDate);
+      });
   }, [tasks]);
 
   function shiftMonth(amount) {
@@ -143,11 +208,12 @@ function PinnedCalendar({ currentDate, calendarMonth, setCalendarMonth, tasks })
   }
 
   return (
-    <header className="calendarDock">
+    <aside className="calendarDock">
       <div className="calendarTop">
         <div>
           <p className="eyebrow">Pinned Monthly Calendar</p>
           <h2>{monthLabel(calendarMonth)}</h2>
+          <p className="calendarHint">Tasks stretch from start date to due date.</p>
         </div>
         <div className="calendarActions">
           <button onClick={() => shiftMonth(-1)}>←</button>
@@ -162,43 +228,65 @@ function PinnedCalendar({ currentDate, calendarMonth, setCalendarMonth, tasks })
         ))}
       </div>
 
-      <div className="weekGrid monthGrid">
-        {days.map((date, index) => {
-          const key = date ? formatDate(date) : `empty-${index}`;
-          const dayTasks = date ? tasksByDate[formatDate(date)] || [] : [];
-          const isToday = date && formatDate(date) === today;
-
-          return (
-            <div key={key} className={isToday ? "dayCell today" : "dayCell"}>
-              {date && (
-                <>
-                  <div className="dayNumber">{date.getDate()}</div>
-                  <div className="taskBars">
-                    {dayTasks.slice(0, 3).map((task) => (
-                      <div key={task.id} className={`taskBar ${task.status === "Done" ? "done" : ""}`}>
-                        {task.title}
-                      </div>
-                    ))}
-                    {dayTasks.length > 3 && <div className="moreTasks">+{dayTasks.length - 3} more</div>}
+      <div className="calendarWeeks">
+        {weeks.map((weekDays, weekIndex) => (
+          <div className="calendarWeek" key={`week-${weekIndex}`}>
+            <div className="weekGrid dayLayer">
+              {weekDays.map((date) => {
+                const dateKey = formatDate(date);
+                const isToday = dateKey === today;
+                const isMuted = date.getMonth() !== currentMonth;
+                return (
+                  <div
+                    key={dateKey}
+                    className={[
+                      "dayCell",
+                      isToday ? "today" : "",
+                      isMuted ? "mutedDay" : ""
+                    ].join(" ")}
+                  >
+                    <div className="dayNumber">{date.getDate()}</div>
                   </div>
-                </>
-              )}
+                );
+              })}
             </div>
-          );
-        })}
+
+            <div className="barLayer">
+              {activeTasks.map((task, taskIndex) => {
+                const segment = getTaskSegmentsForWeek(task, weekDays);
+                if (!segment) return null;
+
+                const lane = taskIndex % 4;
+                return (
+                  <div
+                    key={`${task.id}-${weekIndex}`}
+                    className={`calendarSpanBar ${task.status === "Done" ? "done" : ""}`}
+                    style={{
+                      gridColumn: `${segment.startCol} / ${segment.endCol}`,
+                      top: `${26 + lane * 18}px`
+                    }}
+                    title={`${task.title} • ${getTaskDateLabel(task)}`}
+                  >
+                    {task.title}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
       </div>
-    </header>
+    </aside>
   );
 }
 
 function TodayCard({ currentDate, data }) {
   const today = formatDate(currentDate);
-  const todayTasks = data.tasks.filter((task) => task.dueDate === today && task.status !== "Done");
+  const todayTasks = data.tasks.filter((task) => getTaskDateKeys(task).includes(today) && task.status !== "Done");
   return (
     <aside className="todayCard">
       <p className="eyebrow">Today</p>
       <h3>{currentDate.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" })}</h3>
-      <p>{todayTasks.length} task{todayTasks.length === 1 ? "" : "s"} due today</p>
+      <p>{todayTasks.length} active task{todayTasks.length === 1 ? "" : "s"} today</p>
     </aside>
   );
 }
@@ -252,7 +340,7 @@ function DailyDesk({ data, setData, currentDate }) {
         items={data.dailyLogs}
         empty="No daily logs yet."
         render={(item) => (
-          <article className="card">
+          <article className="card" key={item.id}>
             <div className="cardHead">
               <h3>{item.project || "Untitled Daily Log"}</h3>
               <span>{item.date}</span>
@@ -272,6 +360,7 @@ function TaskDashboard({ data, setData }) {
   const [form, setForm] = useState({
     title: "",
     project: "",
+    startDate: "",
     dueDate: "",
     status: "Not Started",
     priority: "Medium"
@@ -284,7 +373,7 @@ function TaskDashboard({ data, setData }) {
       ...data,
       tasks: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...form }, ...data.tasks]
     });
-    setForm({ title: "", project: "", dueDate: "", status: "Not Started", priority: "Medium" });
+    setForm({ title: "", project: "", startDate: "", dueDate: "", status: "Not Started", priority: "Medium" });
   }
 
   function updateTask(id, patch) {
@@ -295,7 +384,7 @@ function TaskDashboard({ data, setData }) {
   }
 
   return (
-    <Workspace title="Task Dashboard" subtitle="Tasks with due dates will appear as bars on the pinned calendar.">
+    <Workspace title="Task Dashboard" subtitle="Tasks with start and due dates will stretch across the fixed side calendar.">
       <form className="formGrid" onSubmit={addTask}>
         <label>
           Task
@@ -304,6 +393,10 @@ function TaskDashboard({ data, setData }) {
         <label>
           Project
           <input placeholder="Project name" value={form.project} onChange={(e) => setForm({ ...form, project: e.target.value })} />
+        </label>
+        <label>
+          Start date
+          <input type="date" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} />
         </label>
         <label>
           Due date
@@ -329,7 +422,7 @@ function TaskDashboard({ data, setData }) {
               <article key={task.id} className="card smallCard">
                 <div className="pillRow">
                   <span className="pill">{task.priority}</span>
-                  {task.dueDate && <span className="pill muted">{task.dueDate}</span>}
+                  {(task.startDate || task.dueDate) && <span className="pill muted">{getTaskDateLabel(task)}</span>}
                 </div>
                 <h4>{task.title}</h4>
                 {task.project && <p>{task.project}</p>}
@@ -398,7 +491,7 @@ function CodeNotes({ data, setData }) {
         items={data.codeNotes}
         empty="No code notes yet."
         render={(item) => (
-          <article className="card">
+          <article className="card" key={item.id}>
             <div className="cardHead">
               <h3>{item.title || "Untitled Code Note"}</h3>
               <span>{item.codeSource}</span>
@@ -470,7 +563,7 @@ function RevitLog({ data, setData }) {
         items={data.revitLogs}
         empty="No Revit logs yet."
         render={(item) => (
-          <article className="card">
+          <article className="card" key={item.id}>
             <div className="cardHead">
               <h3>{item.issue}</h3>
               <span>{item.category}</span>
@@ -530,7 +623,7 @@ function PromptLibrary({ data, setData }) {
         items={data.prompts}
         empty="No prompts yet."
         render={(item) => (
-          <article className="card">
+          <article className="card" key={item.id}>
             <div className="cardHead">
               <h3>{item.title || "Untitled Prompt"}</h3>
               <span>{item.tool}</span>
