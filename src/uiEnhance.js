@@ -61,6 +61,15 @@ function placeOverlay(element, anchor, offsetY = 0) {
   element.style.width = `${rect.width}px`;
 }
 
+function placeDailySlideControls(element, grid) {
+  if (!element || !grid) return;
+  const rect = grid.getBoundingClientRect();
+  element.style.width = 'auto';
+  element.style.minWidth = '150px';
+  element.style.left = `${rect.right + window.scrollX - 156}px`;
+  element.style.top = `${rect.top + window.scrollY + 18}px`;
+}
+
 function show(element) {
   if (element) element.style.display = '';
 }
@@ -134,8 +143,7 @@ function updateDailyCards() {
 
   const controls = ensureOverlay('safeDailySlide', 'safeSlideOverlay', '<button data-dir="prev">‹</button><span>0 / 0</span><button data-dir="next">›</button>');
   show(controls);
-  const form = document.querySelector('.cardForm');
-  placeOverlay(controls, form || grid, 18);
+  placeDailySlideControls(controls, grid);
   controls.querySelector('span').textContent = filtered.length ? `${slideState.dailyPage + 1} / ${pages}` : '0 / 0';
   if (!controls.dataset.bound) {
     controls.dataset.bound = 'true';
