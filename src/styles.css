@@ -965,6 +965,172 @@ pre {
 }
 
 
+/* Calendar focus boards for Today and Week */
+
+.focusPanel {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.42);
+  padding: 14px;
+}
+
+.focusHead {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.focusHead h3 {
+  margin: 0 0 4px;
+  font-size: 22px;
+  letter-spacing: -0.04em;
+}
+
+.focusHead p:last-child {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.focusCount {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: rgba(31, 41, 51, 0.08);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.focusColumns {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(112px, 1fr));
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.focusColumn {
+  min-width: 112px;
+  border-radius: 18px;
+  background: rgba(233, 223, 208, 0.45);
+  padding: 9px;
+}
+
+.focusColumn h4 {
+  margin: 0 0 8px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+
+.focusCards {
+  display: grid;
+  gap: 7px;
+}
+
+.focusTask {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--planned);
+  border-radius: 15px;
+  background: rgba(255, 255, 255, 0.72);
+  padding: 9px;
+  color: var(--ink);
+  box-shadow: none;
+  transition: transform 140ms ease, box-shadow 140ms ease, border-color 140ms ease;
+}
+
+.focusTask:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px rgba(49, 35, 20, 0.1);
+  border-color: rgba(155, 92, 46, 0.35);
+}
+
+.focusTask.urgent { border-left-color: var(--urgent); }
+.focusTask.high { border-left-color: var(--high); }
+.focusTask.progress { border-left-color: var(--progress); }
+.focusTask.waiting { border-left-color: var(--waiting); }
+.focusTask.done { border-left-color: var(--done); opacity: 0.72; }
+
+.focusTaskTitle,
+.focusTaskMeta,
+.focusTaskDate {
+  display: block;
+}
+
+.focusTaskTitle {
+  font-weight: 900;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.focusTaskMeta,
+.focusTaskDate {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.2;
+}
+
+.focusEmpty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  opacity: 0.72;
+}
+
+.taskFocusModal {
+  width: min(820px, calc(100vw - 48px));
+}
+
+.taskDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.taskDetailStat {
+  border: 1px solid var(--line);
+  border-top: 5px solid rgba(155, 92, 46, 0.55);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 12px;
+}
+
+.taskDetailStat span,
+.taskDetailStat strong {
+  display: block;
+}
+
+.taskDetailStat span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.taskDetailStat strong {
+  margin-top: 5px;
+  font-size: 14px;
+}
+
+.taskDetailStat.urgent { border-top-color: var(--urgent); }
+.taskDetailStat.high { border-top-color: var(--high); }
+.taskDetailStat.progress { border-top-color: var(--progress); }
+.taskDetailStat.waiting { border-top-color: var(--waiting); }
+.taskDetailStat.done { border-top-color: var(--done); }
+
 /* Compact library system for Code Notes, Revit Logs, and Prompt Library */
 
 .filterBar,
@@ -1160,6 +1326,14 @@ pre {
 }
 
 @media (max-width: 900px) {
+  .taskDetailGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .focusColumns {
+    grid-template-columns: repeat(5, 150px);
+  }
+
   .hero {
     grid-template-columns: 1fr;
   }
@@ -1179,6 +1353,10 @@ pre {
 }
 
 @media (max-width: 640px) {
+  .taskDetailGrid {
+    grid-template-columns: 1fr;
+  }
+
   .modalActions,
   .logCardFooter,
   .modalActionRight {

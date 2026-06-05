@@ -93,6 +93,42 @@ function getTaskProjectAccent(task) {
   return `projectAccent${Math.abs(hash) % 6}`;
 }
 
+function getTaskUrgencyRank(task) {
+  if (task.status === "Done") return 99;
+  if (task.priority === "Urgent") return 0;
+  if (task.priority === "High") return 1;
+  if (task.status === "In Progress") return 2;
+  if (task.status === "Waiting") return 3;
+  if (task.priority === "Medium") return 4;
+  return 5;
+}
+
+function sortFocusTasks(tasks) {
+  return [...tasks].sort((a, b) => {
+    const rank = getTaskUrgencyRank(a) - getTaskUrgencyRank(b);
+    if (rank !== 0) return rank;
+
+    const aDue = a.dueDate || a.startDate || "9999-12-31";
+    const bDue = b.dueDate || b.startDate || "9999-12-31";
+    const dateCompare = aDue.localeCompare(bDue);
+    if (dateCompare !== 0) return dateCompare;
+
+    return (a.title || "").localeCompare(b.title || "");
+  });
+}
+
+function getFocusColumn(task) {
+  if (task.priority === "Urgent") return "Urgent";
+  if (task.priority === "High") return "High";
+  if (task.status === "In Progress") return "In Progress";
+  if (task.status === "Waiting") return "Waiting";
+  return "Planned";
+}
+
+function isActiveTask(task) {
+  return task.status !== "Done";
+}
+
 function getMonthWeeks(currentDate) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -448,7 +484,7 @@ function CalendarPanel({ currentDate, calendarDate, setCalendarDate, calendarVie
       <div className="calendarTop">
         <div>
           <p className="eyebrow">Pinned Monthly Calendar</p>
-          <h2>{calendarView === "Year" ? calendarDate.getFullYear() : calendarView === "Week" ? "This Week" : monthLabel(calendarDate)}</h2>
+          <h2>{calendarView === "Year" ? calendarDate.getFullYear() : calendarView === "Week" ? "This Week" : calendarView === "Today" ? "Today" : monthLabel(calendarDate)}</h2>
           <p className="calendarHint">Tasks stretch from start date to due date.</p>
           <div className="calendarLegend">
             <span><i className="legendDot planned"></i>Planned</span>
@@ -571,7 +607,7 @@ function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
 
 function TodayCalendarView({ currentDate, tasks, dailyLogs }) {
   const todayKey = formatDate(currentDate);
-  const todayTasks = tasks.filter((task) => getTaskDateKeys(task).includes(todayKey));
+  const todayTasks = sortFocusTasks(tasks.filter((task) => isActiveTask(task) && getTaskDateKeys(task).includes(todayKey)));
   const todayLogs = dailyLogs.filter((log) => log.date === todayKey);
 
   return (
@@ -580,30 +616,25 @@ function TodayCalendarView({ currentDate, tasks, dailyLogs }) {
         <p className="eyebrow">Today</p>
         <h3>{currentDate.toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}</h3>
       </div>
-      <div className="miniList">
-        {todayTasks.length === 0 ? (
-          <div className="empty compact">No active tasks today.</div>
-        ) : (
-          todayTasks.map((task) => (
-            <article key={task.id} className={`miniTask ${getTaskTone(task)}`}>
-              <strong>{task.title}</strong>
-              <span>{task.project || "No project"} · {getTaskDateLabel(task)}</span>
-            </article>
-          ))
-        )}
 
-        {todayLogs.length > 0 && (
-          <div className="todayLogStack">
-            <p className="miniSectionTitle">Daily logs</p>
-            {todayLogs.map((log) => (
-              <article key={log.id} className="miniLog">
-                <strong>{log.project || "Daily Log"}</strong>
-                <span>{log.summary || "No summary"}</span>
-              </article>
-            ))}
-          </div>
-        )}
-      </div>
+      <FocusTaskBoard
+        title="Today Focus"
+        subtitle="Sorted by urgent priority, status, then due date."
+        tasks={todayTasks}
+        emptyText="No active tasks today."
+      />
+
+      {todayLogs.length > 0 && (
+        <div className="todayLogStack">
+          <p className="miniSectionTitle">Daily logs</p>
+          {todayLogs.map((log) => (
+            <article key={log.id} className="miniLog">
+              <strong>{log.project || "Daily Log"}</strong>
+              <span>{log.summary || "No summary"}</span>
+            </article>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
@@ -612,6 +643,7 @@ function WeekCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
   const weekDays = useMemo(() => getWeekDays(calendarDate), [calendarDate]);
   const today = formatDate(currentDate);
   const activeTasks = tasks.filter((task) => task.startDate || task.dueDate);
+  const weekFocusTasks = sortFocusTasks(activeTasks.filter((task) => isActiveTask(task) && getTaskSegmentsForWeek(task, weekDays)));
   const logsByDate = useMemo(() => {
     return dailyLogs.reduce((acc, log) => {
       if (!log.date) return acc;
@@ -650,6 +682,7 @@ function WeekCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
                 key={task.id}
                 className={`calendarSpanBar ${getTaskTone(task)} ${getTaskProjectAccent(task)}`}
                 style={{ gridColumn: `${segment.startCol} / ${segment.endCol}`, top: `${32 + (index % 8) * 20}px` }}
+                title={`${task.title} • ${getTaskDateLabel(task)}`}
               >
                 {task.title}
               </div>
@@ -657,7 +690,122 @@ function WeekCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
           })}
         </div>
       </div>
+
+      <FocusTaskBoard
+        title="This Week Focus"
+        subtitle="What needs completion or attention this week."
+        tasks={weekFocusTasks}
+        emptyText="No active tasks scheduled for this week."
+      />
     </>
+  );
+}
+
+function FocusTaskBoard({ title, subtitle, tasks, emptyText }) {
+  const [openTask, setOpenTask] = useState(null);
+  const columns = ["Urgent", "High", "In Progress", "Waiting", "Planned"];
+
+  const groupedTasks = columns.reduce((acc, column) => {
+    acc[column] = tasks.filter((task) => getFocusColumn(task) === column);
+    return acc;
+  }, {});
+
+  return (
+    <section className="focusPanel">
+      <div className="focusHead">
+        <div>
+          <p className="eyebrow">Focus Board</p>
+          <h3>{title}</h3>
+          <p>{subtitle}</p>
+        </div>
+        <span className="focusCount">{tasks.length} task{tasks.length === 1 ? "" : "s"}</span>
+      </div>
+
+      {tasks.length === 0 ? (
+        <div className="empty compact">{emptyText}</div>
+      ) : (
+        <div className="focusColumns">
+          {columns.map((column) => (
+            <section key={column} className="focusColumn">
+              <h4>{column}</h4>
+              <div className="focusCards">
+                {groupedTasks[column].length === 0 ? (
+                  <p className="focusEmpty">Clear</p>
+                ) : (
+                  groupedTasks[column].map((task) => (
+                    <button
+                      type="button"
+                      key={task.id}
+                      className={`focusTask ${getTaskTone(task)}`}
+                      onClick={() => setOpenTask(task)}
+                    >
+                      <span className="focusTaskTitle">{task.title}</span>
+                      <span className="focusTaskMeta">{task.project || "No project"}</span>
+                      <span className="focusTaskDate">{getTaskDateLabel(task)}</span>
+                    </button>
+                  ))
+                )}
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+
+      {openTask && <TaskFocusModal task={openTask} onClose={() => setOpenTask(null)} />}
+    </section>
+  );
+}
+
+function TaskFocusModal({ task, onClose }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modalOverlay" onClick={onClose}>
+      <article className="logModal taskFocusModal" onClick={(event) => event.stopPropagation()}>
+        <div className="modalTop">
+          <div>
+            <p className="eyebrow">Task Detail</p>
+            <h2>{task.title || "Untitled Task"}</h2>
+            <p className="modalDate">{task.project || "No project"} · {getTaskDateLabel(task)}</p>
+          </div>
+          <button type="button" className="modalClose" onClick={onClose}>×</button>
+        </div>
+
+        <div className="taskDetailGrid">
+          <div className={`taskDetailStat ${getTaskTone(task)}`}>
+            <span>Priority</span>
+            <strong>{task.priority || "Medium"}</strong>
+          </div>
+          <div className={`taskDetailStat ${getTaskTone(task)}`}>
+            <span>Status</span>
+            <strong>{task.status || "Not Started"}</strong>
+          </div>
+          <div className="taskDetailStat">
+            <span>Start</span>
+            <strong>{task.startDate || "—"}</strong>
+          </div>
+          <div className="taskDetailStat">
+            <span>Due</span>
+            <strong>{task.dueDate || "—"}</strong>
+          </div>
+        </div>
+
+        <div className="modalSection">
+          <h3>Task Notes</h3>
+          <p>{task.notes || "No notes yet. You can add task notes from the Task Dashboard form for future tasks."}</p>
+        </div>
+
+        <div className="modalActions">
+          <button type="button" className="primary" onClick={onClose}>Done</button>
+        </div>
+      </article>
+    </div>
   );
 }
 
@@ -877,7 +1025,8 @@ function TaskDashboard({ data, setData, searchQuery }) {
     startDate: "",
     dueDate: "",
     status: "Not Started",
-    priority: "Medium"
+    priority: "Medium",
+    notes: ""
   });
   const [projectFilter, setProjectFilter] = useState("All");
   const [priorityFilter, setPriorityFilter] = useState("All");
@@ -903,7 +1052,7 @@ function TaskDashboard({ data, setData, searchQuery }) {
       ...data,
       tasks: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...form }, ...data.tasks]
     });
-    setForm({ title: "", project: "", startDate: "", dueDate: "", status: "Not Started", priority: "Medium" });
+    setForm({ title: "", project: "", startDate: "", dueDate: "", status: "Not Started", priority: "Medium", notes: "" });
   }
 
   function updateTask(id, patch) {
@@ -941,6 +1090,10 @@ function TaskDashboard({ data, setData, searchQuery }) {
             <option>Urgent</option>
           </select>
         </label>
+        <label className="wide">
+          Task notes / details
+          <textarea placeholder="What needs attention? What should I remember when I open this task?" value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
+        </label>
         <button className="primary wide" type="submit">Add Task</button>
       </form>
 
@@ -975,6 +1128,7 @@ function TaskDashboard({ data, setData, searchQuery }) {
                 </div>
                 <h4>{task.title}</h4>
                 {task.project && <p>{task.project}</p>}
+                {task.notes && <p className="clampedText">{task.notes}</p>}
                 <select value={task.status} onChange={(e) => updateTask(task.id, { status: e.target.value })}>
                   <option>Not Started</option>
                   <option>In Progress</option>
