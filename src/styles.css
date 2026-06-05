@@ -8,12 +8,6 @@
   --page-gap: clamp(18px, 2vw, 32px);
   --calendar-width: minmax(390px, 2fr);
   --desk-width: minmax(680px, 3fr);
-  --planned: #9b5c2e;
-  --progress: #4f6f8f;
-  --waiting: #8a6f3d;
-  --high: #b55b3b;
-  --urgent: #b42318;
-  --done: #6f8a62;
   --bg: #f4f1ea;
   --paper: #fffaf0;
   --paper-strong: #fff3d6;
@@ -24,6 +18,12 @@
   --accent-dark: #683b1f;
   --soft: #e9dfd0;
   --green: #6f8a62;
+  --planned: #9b5c2e;
+  --progress: #4f6f8f;
+  --waiting: #8a6f3d;
+  --high: #b55b3b;
+  --urgent: #b42318;
+  --done: #6f8a62;
 }
 
 body {
@@ -65,24 +65,24 @@ button {
 
 .hero {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 280px;
+  grid-template-columns: minmax(0, 1fr) 260px;
   gap: 20px;
   align-items: stretch;
   margin-bottom: 22px;
 }
 
-.hero > div,
 .todayCard,
 .workspace,
-.calendarDock {
+.calendarDock,
+.actionBar {
   border: 1px solid var(--line);
   background: rgba(255, 250, 240, 0.78);
   box-shadow: 0 18px 50px rgba(49, 35, 20, 0.08);
   border-radius: 28px;
 }
 
-.hero > div {
-  padding: clamp(24px, 4vw, 44px);
+.brandBlock {
+  padding: 4px 8px 8px;
 }
 
 .todayCard {
@@ -100,9 +100,9 @@ button {
 
 h1 {
   margin: 0;
-  font-size: clamp(42px, 5.2vw, 76px);
+  font-size: clamp(48px, 5.8vw, 86px);
   letter-spacing: -0.08em;
-  line-height: 0.9;
+  line-height: 0.88;
 }
 
 .heroText {
@@ -122,6 +122,62 @@ h1 {
   color: var(--muted);
 }
 
+.actionBar {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto;
+  gap: 14px;
+  align-items: end;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.searchBox {
+  margin: 0;
+}
+
+.searchBox span {
+  color: var(--accent-dark);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.actionButtons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.actionButtons button,
+.importButton {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: white;
+  color: var(--ink);
+  font-weight: 900;
+  line-height: 1;
+}
+
+.importButton {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.importButton input {
+  display: none;
+}
+
+.importMessage {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .tabs {
   display: flex;
   flex-wrap: wrap;
@@ -130,6 +186,7 @@ h1 {
 }
 
 .calendarActions button,
+.viewSwitch button,
 .tab,
 .delete,
 .primary {
@@ -141,7 +198,10 @@ h1 {
 }
 
 .calendarActions button:hover,
-.tab:hover {
+.viewSwitch button:hover,
+.tab:hover,
+.actionButtons button:hover,
+.importButton:hover {
   border-color: rgba(155, 92, 46, 0.45);
 }
 
@@ -339,7 +399,11 @@ pre {
   text-align: center;
 }
 
-/* Fixed side calendar */
+.empty.compact {
+  padding: 18px;
+}
+
+/* Calendar */
 
 .calendarDock {
   position: sticky;
@@ -373,13 +437,72 @@ pre {
   line-height: 1.35;
 }
 
-.calendarActions {
+.calendarNav {
+  display: grid;
+  gap: 8px;
+  justify-items: end;
+}
+
+.calendarActions,
+.viewSwitch {
   display: flex;
   gap: 6px;
 }
 
-.calendarActions button {
+.calendarActions button,
+.viewSwitch button {
   padding: 8px 10px;
+  font-weight: 800;
+}
+
+.viewSwitch {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid var(--line);
+  padding: 4px;
+  border-radius: 999px;
+}
+
+.viewSwitch button {
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+}
+
+.viewSwitch button.active {
+  color: white;
+  background: var(--ink);
+}
+
+.calendarLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendarLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--planned);
+}
+
+.legendDot.progress {
+  background: var(--progress);
+}
+
+.legendDot.urgent {
+  background: var(--urgent);
 }
 
 .weekGrid {
@@ -411,6 +534,10 @@ pre {
   min-height: 92px;
 }
 
+.calendarWeek.weekOnly {
+  min-height: 230px;
+}
+
 .dayLayer {
   position: absolute;
   inset: 0;
@@ -422,6 +549,10 @@ pre {
   border: 1px solid var(--line);
   border-radius: 14px;
   padding: 7px;
+}
+
+.weekOnly .dayCell {
+  min-height: 230px;
 }
 
 .dayCell.today {
@@ -465,43 +596,6 @@ pre {
   pointer-events: auto;
 }
 
-.calendarSpanBar.done {
-  background: var(--done);
-  text-decoration: line-through;
-}
-
-.calendarLegend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  margin-top: 10px;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.calendarLegend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.legendDot {
-  width: 8px;
-  height: 8px;
-  display: inline-block;
-  border-radius: 999px;
-  background: var(--planned);
-}
-
-.legendDot.progress {
-  background: var(--progress);
-}
-
-.legendDot.urgent {
-  background: var(--urgent);
-}
-
 .calendarSpanBar.planned,
 .tonePill.planned {
   background: var(--planned);
@@ -540,27 +634,106 @@ pre {
 .calendarSpanBar.projectAccent4 { border-left: 5px solid rgba(236, 203, 191, 0.92); }
 .calendarSpanBar.projectAccent5 { border-left: 5px solid rgba(224, 210, 235, 0.92); }
 
+.todayView {
+  display: grid;
+  gap: 14px;
+}
+
+.todayDateCard {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.todayDateCard h3 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: -0.04em;
+}
+
+.miniList {
+  display: grid;
+  gap: 10px;
+}
+
+.miniTask {
+  border: 1px solid var(--line);
+  border-left: 6px solid var(--planned);
+  border-radius: 18px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.68);
+}
+
+.miniTask strong,
+.miniTask span {
+  display: block;
+}
+
+.miniTask span {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.yearGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.monthMini {
+  display: grid;
+  gap: 8px;
+  min-height: 86px;
+  align-content: center;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.62);
+  padding: 14px;
+}
+
+.monthMini strong {
+  font-size: 18px;
+}
+
+.monthMini span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.monthMini.current {
+  outline: 2px solid rgba(155, 92, 46, 0.72);
+  background: #fff3d6;
+}
+
 .taskCard {
   border-left: 6px solid var(--planned);
 }
 
-.taskCard.progress {
+.taskCard.progress,
+.miniTask.progress {
   border-left-color: var(--progress);
 }
 
-.taskCard.waiting {
+.taskCard.waiting,
+.miniTask.waiting {
   border-left-color: var(--waiting);
 }
 
-.taskCard.high {
+.taskCard.high,
+.miniTask.high {
   border-left-color: var(--high);
 }
 
-.taskCard.urgent {
+.taskCard.urgent,
+.miniTask.urgent {
   border-left-color: var(--urgent);
 }
 
-.taskCard.done {
+.taskCard.done,
+.miniTask.done {
   border-left-color: var(--done);
   opacity: 0.78;
 }
@@ -597,7 +770,7 @@ pre {
     top: 0;
     width: auto;
     height: auto;
-    max-height: 380px;
+    max-height: 420px;
     border-radius: 0 0 28px 28px;
     border-left: 0;
     border-right: 0;
@@ -617,8 +790,13 @@ pre {
     grid-template-columns: 1fr;
   }
 
-  .formGrid {
+  .formGrid,
+  .actionBar {
     grid-template-columns: 1fr;
+  }
+
+  .actionButtons {
+    justify-content: flex-start;
   }
 
   .taskBoard {
@@ -650,9 +828,9 @@ pre {
     margin-top: 18px;
   }
 
-  .hero > div,
   .todayCard,
-  .workspace {
+  .workspace,
+  .actionBar {
     border-radius: 22px;
   }
 }
