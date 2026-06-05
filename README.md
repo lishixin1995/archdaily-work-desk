@@ -1,23 +1,18 @@
 # ARCH DAILY WORK DESK
 
-A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, search, PDF report export, and a fixed calendar.
+A personal architecture workflow dashboard built with Vite + React.
 
-## V10 updates
+## Run locally
 
-- Kept the full calendar system from V9: Today / Week / Month / Year, task bars, Daily Log markers, and urgent/status colors.
-- Added a Focus Board for Today view.
-- Added a Focus Board below Week view so the empty area now shows tasks that need completion or attention.
-- Focus tasks are sorted by Urgent first, then High, In Progress, Waiting, and Planned.
-- Focus tasks are grouped into clear columns.
-- Clicking a focus task opens a full task detail modal.
-- Task Dashboard now includes an optional Task notes / details field for future full task notes.
+```bash
+npm install
+npm run dev
+```
 
-## Deploy
+## Deploy on Vercel
 
-Upload these files to GitHub. Vercel will redeploy automatically.
+Push the files to GitHub, then import/redeploy the repo in Vercel. Build command: `npm run build`, output folder: `dist`.
 
-Vercel settings:
+## Notes update
 
-- Framework Preset: Vite
-- Build Command: npm run build
-- Output Directory: dist
+Dashboard, DOB Notes, AI Prompt Library, and Revit Trouble Shoot cards now use compact previews and open full-note detail modals, matching Daily Task Log behavior.
