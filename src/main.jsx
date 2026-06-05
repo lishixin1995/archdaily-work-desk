@@ -75,6 +75,24 @@ function getTaskDateLabel(task) {
   return task.dueDate || task.startDate || "No date";
 }
 
+function getTaskTone(task) {
+  if (task.status === "Done") return "done";
+  if (task.priority === "Urgent") return "urgent";
+  if (task.priority === "High") return "high";
+  if (task.status === "In Progress") return "progress";
+  if (task.status === "Waiting") return "waiting";
+  return "planned";
+}
+
+function getTaskProjectAccent(task) {
+  const source = task.project || task.title || "";
+  let hash = 0;
+  for (let i = 0; i < source.length; i++) {
+    hash = source.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return `projectAccent${Math.abs(hash) % 6}`;
+}
+
 function getMonthWeeks(currentDate) {
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -214,6 +232,11 @@ function PinnedCalendar({ currentDate, calendarMonth, setCalendarMonth, tasks })
           <p className="eyebrow">Pinned Monthly Calendar</p>
           <h2>{monthLabel(calendarMonth)}</h2>
           <p className="calendarHint">Tasks stretch from start date to due date.</p>
+          <div className="calendarLegend">
+            <span><i className="legendDot planned"></i>Planned</span>
+            <span><i className="legendDot progress"></i>In progress</span>
+            <span><i className="legendDot urgent"></i>Urgent</span>
+          </div>
         </div>
         <div className="calendarActions">
           <button onClick={() => shiftMonth(-1)}>←</button>
@@ -260,7 +283,7 @@ function PinnedCalendar({ currentDate, calendarMonth, setCalendarMonth, tasks })
                 return (
                   <div
                     key={`${task.id}-${weekIndex}`}
-                    className={`calendarSpanBar ${task.status === "Done" ? "done" : ""}`}
+                    className={`calendarSpanBar ${getTaskTone(task)} ${getTaskProjectAccent(task)}`}
                     style={{
                       gridColumn: `${segment.startCol} / ${segment.endCol}`,
                       top: `${26 + lane * 18}px`
@@ -419,9 +442,9 @@ function TaskDashboard({ data, setData }) {
           <section key={status} className="taskColumn">
             <h3>{status}</h3>
             {data.tasks.filter((task) => task.status === status).map((task) => (
-              <article key={task.id} className="card smallCard">
+              <article key={task.id} className={`card smallCard taskCard ${getTaskTone(task)}`}>
                 <div className="pillRow">
-                  <span className="pill">{task.priority}</span>
+                  <span className={`pill tonePill ${getTaskTone(task)}`}>{task.priority}</span>
                   {(task.startDate || task.dueDate) && <span className="pill muted">{getTaskDateLabel(task)}</span>}
                 </div>
                 <h4>{task.title}</h4>

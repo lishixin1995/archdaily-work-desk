@@ -4,8 +4,16 @@
 
 :root {
   color-scheme: light;
-  --calendar-width: clamp(360px, 30vw, 430px);
-  --side-gap: clamp(20px, 3vw, 44px);
+  --page-max: 1720px;
+  --page-gap: clamp(18px, 2vw, 32px);
+  --calendar-width: minmax(390px, 2fr);
+  --desk-width: minmax(680px, 3fr);
+  --planned: #9b5c2e;
+  --progress: #4f6f8f;
+  --waiting: #8a6f3d;
+  --high: #b55b3b;
+  --urgent: #b42318;
+  --done: #6f8a62;
   --bg: #f4f1ea;
   --paper: #fffaf0;
   --paper-strong: #fff3d6;
@@ -40,15 +48,19 @@ button {
 
 .app {
   min-height: 100vh;
+  width: min(var(--page-max), calc(100vw - 48px));
+  margin: 0 auto;
+  padding: 28px 0 80px;
+  display: grid;
+  grid-template-columns: var(--desk-width) var(--calendar-width);
+  gap: var(--page-gap);
+  align-items: start;
 }
 
 .shell {
-  width: auto;
-  max-width: 1060px;
-  margin-top: 34px;
-  margin-bottom: 80px;
-  margin-left: var(--side-gap);
-  margin-right: calc(var(--calendar-width) + var(--side-gap) + 28px);
+  width: 100%;
+  min-width: 0;
+  margin: 0;
 }
 
 .hero {
@@ -330,11 +342,10 @@ pre {
 /* Fixed side calendar */
 
 .calendarDock {
-  position: fixed;
-  top: var(--side-gap);
-  right: var(--side-gap);
-  width: var(--calendar-width);
-  height: calc(100vh - (var(--side-gap) * 2));
+  position: sticky;
+  top: 28px;
+  width: 100%;
+  height: calc(100vh - 56px);
   z-index: 20;
   padding: 18px;
   overflow: auto;
@@ -446,7 +457,7 @@ pre {
   text-overflow: ellipsis;
   white-space: nowrap;
   color: white;
-  background: var(--accent);
+  background: var(--planned);
   font-size: 10px;
   font-weight: 900;
   line-height: 12px;
@@ -455,42 +466,147 @@ pre {
 }
 
 .calendarSpanBar.done {
-  background: var(--green);
+  background: var(--done);
   text-decoration: line-through;
 }
 
-@media (max-width: 1450px) {
+.calendarLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.calendarLegend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legendDot {
+  width: 8px;
+  height: 8px;
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--planned);
+}
+
+.legendDot.progress {
+  background: var(--progress);
+}
+
+.legendDot.urgent {
+  background: var(--urgent);
+}
+
+.calendarSpanBar.planned,
+.tonePill.planned {
+  background: var(--planned);
+}
+
+.calendarSpanBar.progress,
+.tonePill.progress {
+  background: var(--progress);
+}
+
+.calendarSpanBar.waiting,
+.tonePill.waiting {
+  background: var(--waiting);
+}
+
+.calendarSpanBar.high,
+.tonePill.high {
+  background: var(--high);
+}
+
+.calendarSpanBar.urgent,
+.tonePill.urgent {
+  background: var(--urgent);
+}
+
+.calendarSpanBar.done,
+.tonePill.done {
+  background: var(--done);
+  text-decoration: line-through;
+}
+
+.calendarSpanBar.projectAccent0 { border-left: 5px solid rgba(255, 255, 255, 0.82); }
+.calendarSpanBar.projectAccent1 { border-left: 5px solid rgba(255, 234, 168, 0.92); }
+.calendarSpanBar.projectAccent2 { border-left: 5px solid rgba(204, 226, 214, 0.92); }
+.calendarSpanBar.projectAccent3 { border-left: 5px solid rgba(202, 218, 238, 0.92); }
+.calendarSpanBar.projectAccent4 { border-left: 5px solid rgba(236, 203, 191, 0.92); }
+.calendarSpanBar.projectAccent5 { border-left: 5px solid rgba(224, 210, 235, 0.92); }
+
+.taskCard {
+  border-left: 6px solid var(--planned);
+}
+
+.taskCard.progress {
+  border-left-color: var(--progress);
+}
+
+.taskCard.waiting {
+  border-left-color: var(--waiting);
+}
+
+.taskCard.high {
+  border-left-color: var(--high);
+}
+
+.taskCard.urgent {
+  border-left-color: var(--urgent);
+}
+
+.taskCard.done {
+  border-left-color: var(--done);
+  opacity: 0.78;
+}
+
+.tonePill {
+  color: white;
+}
+
+@media (max-width: 1500px) {
+  .app {
+    width: min(100% - 36px, var(--page-max));
+    grid-template-columns: minmax(640px, 1.75fr) minmax(360px, 1fr);
+  }
+
   .hero {
     grid-template-columns: minmax(0, 1fr);
   }
 
   .todayCard {
-    max-width: 320px;
+    max-width: 340px;
   }
 }
 
-@media (max-width: 1240px) {
+@media (max-width: 1160px) {
+  .app {
+    display: flex;
+    flex-direction: column-reverse;
+    width: min(1180px, calc(100% - 32px));
+    padding-top: 0;
+  }
+
   .calendarDock {
     position: sticky;
     top: 0;
-    right: auto;
     width: auto;
     height: auto;
-    max-height: 360px;
-    border-radius: 0;
+    max-height: 380px;
+    border-radius: 0 0 28px 28px;
     border-left: 0;
     border-right: 0;
     border-top: 0;
     margin-bottom: 24px;
   }
 
-  .app {
-    display: flex;
-    flex-direction: column-reverse;
-  }
-
   .shell {
-    width: min(1180px, calc(100% - 32px));
+    width: 100%;
     max-width: 1180px;
     margin: 24px auto 80px;
   }
