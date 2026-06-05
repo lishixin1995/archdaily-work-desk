@@ -10,6 +10,10 @@
   box-shadow: 0 12px 28px rgba(64, 43, 26, 0.07) !important;
 }
 
+.filterCard .dateFilterRibbon {
+  display: none !important;
+}
+
 .dateFilterRibbon + .cardForm {
   margin-top: 0 !important;
 }
