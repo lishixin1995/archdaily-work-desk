@@ -155,18 +155,6 @@ function escapeHTML(value) {
     .replaceAll(">", "&gt;");
 }
 
-function downloadText(filename, text, type = "application/json") {
-  const blob = new Blob([text], { type });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-  URL.revokeObjectURL(url);
-}
-
 function App() {
   const [data, setData] = useState(loadData);
   const [activeTab, setActiveTab] = useState("Daily Desk");
@@ -210,7 +198,6 @@ function App() {
 
         <ActionBar
           data={data}
-          setData={setData}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
         />
@@ -246,47 +233,7 @@ function App() {
   );
 }
 
-function ActionBar({ data, setData, searchQuery, setSearchQuery }) {
-  const [importMessage, setImportMessage] = useState("");
-
-  function exportBackup() {
-    const payload = {
-      exportedAt: new Date().toISOString(),
-      app: "ARCH DAILY WORK DESK",
-      version: "v6",
-      data
-    };
-    downloadText(
-      `arch-daily-work-desk-backup-${formatDate(new Date())}.json`,
-      JSON.stringify(payload, null, 2)
-    );
-  }
-
-  function importBackup(event) {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const parsed = JSON.parse(reader.result);
-        const importedData = parsed.data || parsed;
-        setData({
-          dailyLogs: Array.isArray(importedData.dailyLogs) ? importedData.dailyLogs : [],
-          tasks: Array.isArray(importedData.tasks) ? importedData.tasks : [],
-          codeNotes: Array.isArray(importedData.codeNotes) ? importedData.codeNotes : [],
-          revitLogs: Array.isArray(importedData.revitLogs) ? importedData.revitLogs : [],
-          prompts: Array.isArray(importedData.prompts) ? importedData.prompts : []
-        });
-        setImportMessage("Backup imported.");
-      } catch {
-        setImportMessage("Could not read this backup file.");
-      }
-    };
-    reader.readAsText(file);
-    event.target.value = "";
-  }
-
+function ActionBar({ data, searchQuery, setSearchQuery }) {
   function exportPdfReport() {
     const openTasks = data.tasks.filter((task) => task.status !== "Done");
     const doneTasks = data.tasks.filter((task) => task.status === "Done");
@@ -473,15 +420,8 @@ function ActionBar({ data, setData, searchQuery, setSearchQuery }) {
       </label>
 
       <div className="actionButtons">
-        <button type="button" onClick={exportBackup}>Backup JSON</button>
-        <label className="importButton">
-          Import JSON
-          <input type="file" accept="application/json" onChange={importBackup} />
-        </label>
-        <button type="button" onClick={exportPdfReport}>Export PDF</button>
+        <button type="button" onClick={exportPdfReport}>Export PDF Report</button>
       </div>
-
-      {importMessage && <p className="importMessage">{importMessage}</p>}
     </section>
   );
 }

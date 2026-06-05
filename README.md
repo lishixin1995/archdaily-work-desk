@@ -1,16 +1,15 @@
 # ARCH DAILY WORK DESK
 
-A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, and a fixed calendar.
+A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, search, PDF report export, and a fixed calendar.
 
-## V6 updates
+## V7 updates
 
-- Removed the card frame around the main title area for a cleaner website header.
-- Added calendar view switch: Today / Week / Month / Year.
-- Added global search across tasks, daily logs, code notes, Revit logs, and prompts.
-- Added Backup JSON export.
-- Added Import JSON restore.
-- Added designed PDF report export through the browser print-to-PDF dialog.
-- Kept the warm paper / architectural studio color system.
+- Removed Backup JSON and Import JSON buttons from the visible workflow.
+- Kept the workflow clean with only Search and Export PDF Report.
+- Data still saves automatically in the browser through localStorage.
+- Calendar view switch remains: Today / Week / Month / Year.
+- Search still works across tasks, daily logs, code notes, Revit logs, and prompts.
+- Export PDF Report still generates a designed report page instead of printing the website directly.
 
 ## Deploy
 
