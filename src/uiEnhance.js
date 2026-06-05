@@ -133,9 +133,13 @@ function updateDailyCards() {
   cards.forEach((card) => card.classList.toggle('safeHidden', !visible.has(card)));
 
   const controls = ensureOverlay('safeDailySlide', 'safeSlideOverlay', '<button data-dir="prev">‹</button><span>0 / 0</span><button data-dir="next">›</button>');
+  if (filtered.length <= pageSize) {
+    hide(controls);
+    return;
+  }
   show(controls);
   placeOverlay(controls, grid, -46);
-  controls.querySelector('span').textContent = filtered.length ? `${slideState.dailyPage + 1} / ${pages}` : '0 / 0';
+  controls.querySelector('span').textContent = `${slideState.dailyPage + 1} / ${pages}`;
   if (!controls.dataset.bound) {
     controls.dataset.bound = 'true';
     controls.addEventListener('click', (event) => {
@@ -200,12 +204,16 @@ function updateKanbanSlides() {
         updateKanbanSlides();
       });
     }
+    if (count <= 1) {
+      hide(controls);
+      return;
+    }
     show(controls);
     const head = column.querySelector('h3') || column;
     const rect = head.getBoundingClientRect();
     controls.style.left = `${rect.right + window.scrollX - 132}px`;
     controls.style.top = `${rect.top + window.scrollY - 2}px`;
-    controls.querySelector('span').textContent = count ? `${index + 1} / ${count}` : '0 / 0';
+    controls.querySelector('span').textContent = `${index + 1} / ${count}`;
   });
 }
 
