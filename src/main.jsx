@@ -228,6 +228,7 @@ function App() {
         calendarView={calendarView}
         setCalendarView={setCalendarView}
         tasks={data.tasks}
+        dailyLogs={data.dailyLogs}
       />
     </div>
   );
@@ -344,7 +345,7 @@ function ActionBar({ data, searchQuery, setSearchQuery }) {
     <section class="grid">
       <div class="stat"><strong>${data.tasks.length}</strong><span class="muted">Tasks</span></div>
       <div class="stat"><strong>${openTasks.length}</strong><span class="muted">Open tasks</span></div>
-      <div class="stat"><strong>${data.codeNotes.length}</strong><span class="muted">Code notes</span></div>
+      <div class="stat"><strong>${data.dailyLogs.length}</strong><span class="muted">Daily logs</span></div>
       <div class="stat"><strong>${data.revitLogs.length}</strong><span class="muted">Revit logs</span></div>
     </section>
 
@@ -426,7 +427,7 @@ function ActionBar({ data, searchQuery, setSearchQuery }) {
   );
 }
 
-function CalendarPanel({ currentDate, calendarDate, setCalendarDate, calendarView, setCalendarView, tasks }) {
+function CalendarPanel({ currentDate, calendarDate, setCalendarDate, calendarView, setCalendarView, tasks, dailyLogs }) {
   function shift(amount) {
     if (calendarView === "Week") {
       setCalendarDate(addDays(calendarDate, amount * 7));
@@ -478,15 +479,15 @@ function CalendarPanel({ currentDate, calendarDate, setCalendarDate, calendarVie
         </div>
       </div>
 
-      {calendarView === "Today" && <TodayCalendarView currentDate={currentDate} tasks={tasks} />}
-      {calendarView === "Week" && <WeekCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} />}
-      {calendarView === "Month" && <MonthCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} />}
-      {calendarView === "Year" && <YearCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} />}
+      {calendarView === "Today" && <TodayCalendarView currentDate={currentDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Week" && <WeekCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Month" && <MonthCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
+      {calendarView === "Year" && <YearCalendarView currentDate={currentDate} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
     </aside>
   );
 }
 
-function MonthCalendarView({ currentDate, calendarDate, tasks }) {
+function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
   const weeks = useMemo(() => getMonthWeeks(calendarDate), [calendarDate]);
   const today = formatDate(currentDate);
   const currentMonth = calendarDate.getMonth();
@@ -500,6 +501,15 @@ function MonthCalendarView({ currentDate, calendarDate, tasks }) {
         return aDate.localeCompare(bDate);
       });
   }, [tasks]);
+
+  const logsByDate = useMemo(() => {
+    return dailyLogs.reduce((acc, log) => {
+      if (!log.date) return acc;
+      if (!acc[log.date]) acc[log.date] = [];
+      acc[log.date].push(log);
+      return acc;
+    }, {});
+  }, [dailyLogs]);
 
   return (
     <>
@@ -517,12 +527,15 @@ function MonthCalendarView({ currentDate, calendarDate, tasks }) {
                 const dateKey = formatDate(date);
                 const isToday = dateKey === today;
                 const isMuted = date.getMonth() !== currentMonth;
+                const dayLogs = logsByDate[dateKey] || [];
                 return (
                   <div
                     key={dateKey}
-                    className={["dayCell", isToday ? "today" : "", isMuted ? "mutedDay" : ""].join(" ")}
+                    className={["dayCell", isToday ? "today" : "", isMuted ? "mutedDay" : "", dayLogs.length ? "hasLog" : ""].join(" ")}
+                    title={dayLogs.length ? `${dayLogs.length} daily log${dayLogs.length === 1 ? "" : "s"} saved` : ""}
                   >
                     <div className="dayNumber">{date.getDate()}</div>
+                    {dayLogs.length > 0 && <div className="logMarker">{dayLogs.length} log{dayLogs.length === 1 ? "" : "s"}</div>}
                   </div>
                 );
               })}
@@ -556,9 +569,10 @@ function MonthCalendarView({ currentDate, calendarDate, tasks }) {
   );
 }
 
-function TodayCalendarView({ currentDate, tasks }) {
+function TodayCalendarView({ currentDate, tasks, dailyLogs }) {
   const todayKey = formatDate(currentDate);
   const todayTasks = tasks.filter((task) => getTaskDateKeys(task).includes(todayKey));
+  const todayLogs = dailyLogs.filter((log) => log.date === todayKey);
 
   return (
     <section className="todayView">
@@ -577,15 +591,35 @@ function TodayCalendarView({ currentDate, tasks }) {
             </article>
           ))
         )}
+
+        {todayLogs.length > 0 && (
+          <div className="todayLogStack">
+            <p className="miniSectionTitle">Daily logs</p>
+            {todayLogs.map((log) => (
+              <article key={log.id} className="miniLog">
+                <strong>{log.project || "Daily Log"}</strong>
+                <span>{log.summary || "No summary"}</span>
+              </article>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
 }
 
-function WeekCalendarView({ currentDate, calendarDate, tasks }) {
+function WeekCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
   const weekDays = useMemo(() => getWeekDays(calendarDate), [calendarDate]);
   const today = formatDate(currentDate);
   const activeTasks = tasks.filter((task) => task.startDate || task.dueDate);
+  const logsByDate = useMemo(() => {
+    return dailyLogs.reduce((acc, log) => {
+      if (!log.date) return acc;
+      if (!acc[log.date]) acc[log.date] = [];
+      acc[log.date].push(log);
+      return acc;
+    }, {});
+  }, [dailyLogs]);
 
   return (
     <>
@@ -596,11 +630,16 @@ function WeekCalendarView({ currentDate, calendarDate, tasks }) {
       </div>
       <div className="calendarWeek weekOnly">
         <div className="weekGrid dayLayer">
-          {weekDays.map((date) => (
-            <div key={formatDate(date)} className={`dayCell ${formatDate(date) === today ? "today" : ""}`}>
-              <div className="dayNumber">{date.getDate()}</div>
-            </div>
-          ))}
+          {weekDays.map((date) => {
+            const dateKey = formatDate(date);
+            const dayLogs = logsByDate[dateKey] || [];
+            return (
+              <div key={dateKey} className={`dayCell ${dateKey === today ? "today" : ""} ${dayLogs.length ? "hasLog" : ""}`}>
+                <div className="dayNumber">{date.getDate()}</div>
+                {dayLogs.length > 0 && <div className="logMarker">{dayLogs.length} log{dayLogs.length === 1 ? "" : "s"}</div>}
+              </div>
+            );
+          })}
         </div>
         <div className="barLayer">
           {activeTasks.map((task, index) => {
@@ -622,7 +661,7 @@ function WeekCalendarView({ currentDate, calendarDate, tasks }) {
   );
 }
 
-function YearCalendarView({ currentDate, calendarDate, tasks }) {
+function YearCalendarView({ currentDate, calendarDate, tasks, dailyLogs }) {
   const year = calendarDate.getFullYear();
   const today = formatDate(currentDate);
 
@@ -633,6 +672,10 @@ function YearCalendarView({ currentDate, calendarDate, tasks }) {
         const monthTasks = tasks.filter((task) =>
           getTaskDateKeys(task).some((dateKey) => Number(dateKey.slice(0, 4)) === year && Number(dateKey.slice(5, 7)) === monthIndex + 1)
         );
+        const monthLogs = dailyLogs.filter((log) => {
+          if (!log.date) return false;
+          return Number(log.date.slice(0, 4)) === year && Number(log.date.slice(5, 7)) === monthIndex + 1;
+        });
         return (
           <button
             key={monthIndex}
@@ -640,6 +683,7 @@ function YearCalendarView({ currentDate, calendarDate, tasks }) {
           >
             <strong>{monthDate.toLocaleString(undefined, { month: "short" })}</strong>
             <span>{monthTasks.length} task{monthTasks.length === 1 ? "" : "s"}</span>
+            <span>{monthLogs.length} log{monthLogs.length === 1 ? "" : "s"}</span>
           </button>
         );
       })}
@@ -667,8 +711,15 @@ function DailyDesk({ data, setData, currentDate, searchQuery }) {
     blockers: "",
     nextSteps: ""
   });
+  const [logIndex, setLogIndex] = useState(0);
+  const [openLog, setOpenLog] = useState(null);
 
   const filteredLogs = data.dailyLogs.filter((item) => searchRecord(item, searchQuery));
+  const activeLog = filteredLogs[logIndex];
+
+  useEffect(() => {
+    setLogIndex((current) => Math.min(current, Math.max(filteredLogs.length - 1, 0)));
+  }, [filteredLogs.length]);
 
   function addLog(e) {
     e.preventDefault();
@@ -677,7 +728,18 @@ function DailyDesk({ data, setData, currentDate, searchQuery }) {
       ...data,
       dailyLogs: [{ id: crypto.randomUUID(), createdAt: new Date().toISOString(), ...form }, ...data.dailyLogs]
     });
+    setLogIndex(0);
     setForm({ ...form, project: "", summary: "", blockers: "", nextSteps: "" });
+  }
+
+  function shiftLog(amount) {
+    if (filteredLogs.length === 0) return;
+    setLogIndex((current) => (current + amount + filteredLogs.length) % filteredLogs.length);
+  }
+
+  function deleteLog(id) {
+    setData({ ...data, dailyLogs: data.dailyLogs.filter((x) => x.id !== id) });
+    if (openLog?.id === id) setOpenLog(null);
   }
 
   return (
@@ -706,25 +768,107 @@ function DailyDesk({ data, setData, currentDate, searchQuery }) {
         <button className="primary wide" type="submit">Save Daily Log</button>
       </form>
 
-      <CardList
-        items={filteredLogs}
-        empty={searchQuery ? "No daily logs match your search." : "No daily logs yet."}
-        render={(item) => (
-          <article className="card" key={item.id}>
+      <section className="logCarousel">
+        <div className="logCarouselHead">
+          <div>
+            <p className="eyebrow">Saved Daily Logs</p>
+            <h3>{filteredLogs.length ? `${logIndex + 1} / ${filteredLogs.length}` : "No logs yet"}</h3>
+          </div>
+          <div className="carouselActions">
+            <button type="button" onClick={() => shiftLog(-1)} disabled={filteredLogs.length === 0}>←</button>
+            <button type="button" onClick={() => shiftLog(1)} disabled={filteredLogs.length === 0}>→</button>
+          </div>
+        </div>
+
+        {!activeLog ? (
+          <div className="empty">{searchQuery ? "No daily logs match your search." : "No daily logs yet."}</div>
+        ) : (
+          <article
+            className="card logPreview"
+            role="button"
+            tabIndex={0}
+            onClick={() => setOpenLog(activeLog)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") setOpenLog(activeLog);
+            }}
+          >
             <div className="cardHead">
-              <h3>{item.project || "Untitled Daily Log"}</h3>
-              <span>{item.date}</span>
+              <h3>{activeLog.project || "Untitled Daily Log"}</h3>
+              <span>{activeLog.date}</span>
             </div>
-            <p>{item.summary}</p>
-            {item.blockers && <p><strong>Blockers:</strong> {item.blockers}</p>}
-            {item.nextSteps && <p><strong>Next:</strong> {item.nextSteps}</p>}
-            <DeleteButton onClick={() => setData({ ...data, dailyLogs: data.dailyLogs.filter((x) => x.id !== item.id) })} />
+            <p className="clampedText">{activeLog.summary}</p>
+            {activeLog.blockers && <p className="clampedText"><strong>Blockers:</strong> {activeLog.blockers}</p>}
+            {activeLog.nextSteps && <p className="clampedText"><strong>Next:</strong> {activeLog.nextSteps}</p>}
+            <div className="logCardFooter">
+              <span>Click to open full note</span>
+              <span onClick={(event) => event.stopPropagation()}>
+                <DeleteButton onClick={() => deleteLog(activeLog.id)} />
+              </span>
+            </div>
           </article>
         )}
-      />
+      </section>
+
+      {openLog && (
+        <LogModal
+          log={openLog}
+          onClose={() => setOpenLog(null)}
+          onDelete={() => deleteLog(openLog.id)}
+        />
+      )}
     </Workspace>
   );
 }
+
+function LogModal({ log, onClose, onDelete }) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div className="modalOverlay" onClick={onClose}>
+      <article className="logModal" onClick={(event) => event.stopPropagation()}>
+        <div className="modalTop">
+          <div>
+            <p className="eyebrow">Daily Log</p>
+            <h2>{log.project || "Untitled Daily Log"}</h2>
+            <p className="modalDate">{log.date}</p>
+          </div>
+          <button type="button" className="modalClose" onClick={onClose}>×</button>
+        </div>
+
+        <div className="modalSection">
+          <h3>What did I work on?</h3>
+          <p>{log.summary || "No summary."}</p>
+        </div>
+
+        {log.blockers && (
+          <div className="modalSection">
+            <h3>Blockers / Questions</h3>
+            <p>{log.blockers}</p>
+          </div>
+        )}
+
+        {log.nextSteps && (
+          <div className="modalSection">
+            <h3>Next steps</h3>
+            <p>{log.nextSteps}</p>
+          </div>
+        )}
+
+        <div className="modalActions">
+          <button type="button" className="delete" onClick={onDelete}>Delete this log</button>
+          <button type="button" className="primary" onClick={onClose}>Done</button>
+        </div>
+      </article>
+    </div>
+  );
+}
+
 
 function TaskDashboard({ data, setData, searchQuery }) {
   const [form, setForm] = useState({

@@ -2,14 +2,14 @@
 
 A personal architecture work desk for daily logs, task tracking, code / DOB notes, Revit troubleshooting, prompt library, search, PDF report export, and a fixed calendar.
 
-## V7 updates
+## V8 updates
 
-- Removed Backup JSON and Import JSON buttons from the visible workflow.
-- Kept the workflow clean with only Search and Export PDF Report.
-- Data still saves automatically in the browser through localStorage.
-- Calendar view switch remains: Today / Week / Month / Year.
-- Search still works across tasks, daily logs, code notes, Revit logs, and prompts.
-- Export PDF Report still generates a designed report page instead of printing the website directly.
+- Daily Desk saved logs now show as a carousel instead of endlessly extending down the page.
+- Daily log cards can be clicked to open a full reading modal.
+- Long daily notes are clamped in preview but fully readable in the modal.
+- Daily logs now reflect on the calendar as small log markers.
+- Today and Year calendar views also show daily log counts.
+- Search, PDF report export, task color system, and calendar Today / Week / Month / Year views remain.
 
 ## Deploy
 
