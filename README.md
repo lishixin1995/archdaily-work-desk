@@ -1,8 +1,15 @@
 # ARCH DAILY WORK DESK
 
-Full clean Vite + React version.
+Personal architecture work desk for daily logs, task dashboard, DOB notes, AI prompts, Revit troubleshooting, and a pinned calendar.
 
-- Calendar stays visible on the right side for Dashboard, Daily Task Log, DOB Notes, AI Prompt Library, and Revit Trouble Shoot.
-- Cards stay compact and open full notes/details in a modal.
-- No package-lock.json included.
-- Vercel build: `npm run build`, output: `dist`.
+## This update
+
+- Daily Task Log entries now reflect on the pinned calendar by their saved date.
+- Month and Week calendar views show daily log chips.
+- Today view shows clickable daily log cards.
+- Clicking a daily log from the calendar opens the full daily notes modal.
+- No layout redesign and no package-lock.json.
+
+## Deploy
+
+Upload all files to GitHub, then redeploy on Vercel with Clear Build Cache.

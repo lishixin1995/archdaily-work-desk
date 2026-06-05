@@ -327,6 +327,7 @@ textarea { min-height: 122px; resize: vertical; }
 .legendDot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; background: var(--warm); }
 .legendDot.progress { background: var(--blue); }
 .legendDot.urgent { background: var(--danger); }
+.legendDot.daily { background: #5f7f73; }
 
 .monthCalendar {
   display: grid;
@@ -365,6 +366,21 @@ textarea { min-height: 122px; resize: vertical; }
 .calendarTaskBar.high { background: #bb7952; }
 .calendarTaskBar.waiting { background: #8d745e; }
 .calendarTaskBar.done { background: #7d8f72; }
+.calendarLogBar {
+  width: 100%;
+  border: 1px solid rgba(95, 127, 115, .32);
+  border-radius: 999px;
+  padding: 5px 7px;
+  color: #35564a;
+  background: rgba(95, 127, 115, .14);
+  font-size: 10px;
+  font-weight: 850;
+  text-align: left;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.calendarLogBar:hover { border-color: rgba(95, 127, 115, .55); background: rgba(95, 127, 115, .2); }
 .logMarker { font-size: 10px; color: var(--warmDark); background: #f0e2d3; padding: 4px 6px; border-radius: 999px; font-weight: 850; }
 
 .focusWrap, .weekCalendar { display: grid; gap: 14px; }
@@ -409,6 +425,8 @@ textarea { min-height: 122px; resize: vertical; }
 .dailyMarkers { display: grid; gap: 8px; }
 .miniLog { border: 1px solid var(--line); border-radius: 14px; padding: 10px; display: grid; gap: 4px; background: rgba(255,255,255,.5); }
 .miniLog span { color: var(--muted); }
+.calendarLogCard { width: 100%; text-align: left; cursor: pointer; }
+.calendarLogCard:hover { border-color: rgba(95,127,115,.5); background: rgba(95,127,115,.10); }
 
 .yearGrid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .miniMonth { border: 1px solid var(--line); border-radius: 16px; background: rgba(255,255,255,.42); padding: 10px; }

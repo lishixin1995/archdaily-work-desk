@@ -286,6 +286,22 @@ function taskModalData(task) {
   };
 }
 
+function dailyLogModalData(log) {
+  return {
+    eyebrow: 'Daily Task Log',
+    title: log.summary || log.project || 'Daily Log',
+    meta: [
+      ['Date', niceDate(log.date)],
+      ['Project', log.project || 'No project'],
+    ],
+    sections: [
+      ['Quick summary', log.summary || 'No summary.'],
+      ['Full daily notes', log.notes || 'No notes yet.'],
+    ],
+    copyText: `${log.date || ''}\n${log.project || ''}\n${log.summary || ''}\n\n${log.notes || ''}`,
+  };
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [tasks, setTasks] = useStoredArray(STORAGE_KEYS.tasks, LEGACY_KEYS.tasks);
@@ -294,6 +310,7 @@ function App() {
   const [prompts, setPrompts] = useStoredArray(STORAGE_KEYS.prompts, LEGACY_KEYS.prompts);
   const [revitLogs, setRevitLogs] = useStoredArray(STORAGE_KEYS.revit, LEGACY_KEYS.revit);
   const [openTask, setOpenTask] = useState(null);
+  const [openDailyLog, setOpenDailyLog] = useState(null);
 
   const sharedProps = { tasks, setTasks, dailyLogs, setDailyLogs, dobNotes, setDobNotes, prompts, setPrompts, revitLogs, setRevitLogs };
 
@@ -323,11 +340,12 @@ function App() {
           {activeTab === 'Revit Trouble Shoot' && <RevitTroubleShoot revitLogs={revitLogs} setRevitLogs={setRevitLogs} />}
         </section>
         <aside className="calendarDock">
-          <CalendarPanel tasks={tasks} dailyLogs={dailyLogs} onOpenTask={setOpenTask} activeTab={activeTab} />
+          <CalendarPanel tasks={tasks} dailyLogs={dailyLogs} onOpenTask={setOpenTask} onOpenDailyLog={setOpenDailyLog} activeTab={activeTab} />
         </aside>
       </main>
 
       {openTask && <FullNoteModal open {...taskModalData(openTask)} onClose={() => setOpenTask(null)} />}
+      {openDailyLog && <FullNoteModal open {...dailyLogModalData(openDailyLog)} onClose={() => setOpenDailyLog(null)} />}
     </>
   );
 }
@@ -623,7 +641,7 @@ function NoteCards({ items, kind, onOpen, onDelete, getTitle, getBody }) {
   );
 }
 
-function CalendarPanel({ tasks, dailyLogs, onOpenTask, activeTab }) {
+function CalendarPanel({ tasks, dailyLogs, onOpenTask, onOpenDailyLog, activeTab }) {
   const [calendarDate, setCalendarDate] = useState(new Date());
   const [view, setView] = useState('Month');
   const today = new Date();
@@ -645,22 +663,22 @@ function CalendarPanel({ tasks, dailyLogs, onOpenTask, activeTab }) {
         <div>
           <p className="eyebrow">Pinned Monthly Calendar</p>
           <h2>{view === 'Year' ? calendarDate.getFullYear() : view === 'Week' ? 'This Week' : view === 'Today' ? 'Today' : monthLabel(calendarDate)}</h2>
-          <p className="calendarHint">Visible in every section. Tasks stretch from start date to due date.</p>
+          <p className="calendarHint">Visible in every section. Tasks stretch from start date to due date, and Daily Task Logs show on their saved date.</p>
         </div>
         <div className="calendarNavButtons"><button type="button" onClick={() => shiftCalendar(-1)}>←</button><button type="button" onClick={() => shiftCalendar(1)}>→</button></div>
       </div>
       <div className="calendarMode"><button className={view === 'Today' ? 'active' : ''} onClick={() => { setView('Today'); setCalendarDate(new Date()); }}>Today</button><button className={view === 'Week' ? 'active' : ''} onClick={() => setView('Week')}>Week</button><button className={view === 'Month' ? 'active' : ''} onClick={() => setView('Month')}>Month</button><button className={view === 'Year' ? 'active' : ''} onClick={() => setView('Year')}>Year</button></div>
-      <div className="calendarLegend"><span><i className="legendDot planned"></i>Planned</span><span><i className="legendDot progress"></i>In progress</span><span><i className="legendDot urgent"></i>Urgent</span></div>
+      <div className="calendarLegend"><span><i className="legendDot planned"></i>Planned</span><span><i className="legendDot progress"></i>In progress</span><span><i className="legendDot urgent"></i>Urgent</span><span><i className="legendDot daily"></i>Daily log</span></div>
 
-      {view === 'Today' && <TodayCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} />}
-      {view === 'Week' && <WeekCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} />}
-      {view === 'Month' && <MonthCalendarView currentDate={today} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} />}
+      {view === 'Today' && <TodayCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} onOpenDailyLog={onOpenDailyLog} />}
+      {view === 'Week' && <WeekCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} onOpenDailyLog={onOpenDailyLog} />}
+      {view === 'Month' && <MonthCalendarView currentDate={today} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} onOpenDailyLog={onOpenDailyLog} />}
       {view === 'Year' && <YearCalendarView currentDate={today} calendarDate={calendarDate} tasks={tasks} dailyLogs={dailyLogs} />}
     </section>
   );
 }
 
-function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpenTask }) {
+function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpenTask, onOpenDailyLog }) {
   const weeks = useMemo(() => getMonthWeeks(calendarDate), [calendarDate]);
   const todayKey = formatDate(currentDate);
   return (
@@ -668,7 +686,8 @@ function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpen
       {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map((day) => <div key={day} className="weekday">{day}</div>)}
       {weeks.flat().map((day) => {
         const key = formatDate(day);
-        const dayTasks = getTasksForDate(tasks, key).slice(0, 3);
+        const dayTasks = getTasksForDate(tasks, key).slice(0, 2);
+        const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 2);
         const logCount = dailyLogs.filter((log) => log.date === key).length;
         return (
           <div key={key} className={`monthCell ${!sameMonth(day, calendarDate) ? 'muted' : ''} ${key === todayKey ? 'today' : ''}`}>
@@ -677,7 +696,12 @@ function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpen
               {dayTasks.map((task) => (
                 <button key={task.id} type="button" className={`calendarTaskBar ${getTaskTone(task)}`} title={task.title} onClick={() => onOpenTask(task)}>{task.title}</button>
               ))}
-              {logCount > 0 && <span className="logMarker">{logCount} log{logCount > 1 ? 's' : ''}</span>}
+              {dayLogs.map((log) => (
+                <button key={log.id} type="button" className="calendarLogBar" title={log.summary || log.project || 'Daily Log'} onClick={() => onOpenDailyLog(log)}>
+                  {log.summary || log.project || 'Daily Log'}
+                </button>
+              ))}
+              {logCount > dayLogs.length && <span className="logMarker">+{logCount - dayLogs.length} more log{logCount - dayLogs.length > 1 ? 's' : ''}</span>}
             </div>
           </div>
         );
@@ -686,7 +710,7 @@ function MonthCalendarView({ currentDate, calendarDate, tasks, dailyLogs, onOpen
   );
 }
 
-function TodayCalendarView({ date, tasks, dailyLogs, onOpenTask }) {
+function TodayCalendarView({ date, tasks, dailyLogs, onOpenTask, onOpenDailyLog }) {
   const key = formatDate(date);
   const todayTasks = sortFocusTasks(tasks.filter((task) => task.status !== 'Done' && getTaskDateKeys(task).includes(key)));
   const todayLogs = dailyLogs.filter((log) => log.date === key);
@@ -694,12 +718,22 @@ function TodayCalendarView({ date, tasks, dailyLogs, onOpenTask }) {
     <div className="focusWrap">
       <div className="focusDate"><h3>{date.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}</h3><p>{todayTasks.length} active task{todayTasks.length === 1 ? '' : 's'} today.</p></div>
       <FocusTaskBoard tasks={todayTasks} onOpenTask={onOpenTask} emptyText="No active tasks today." />
-      {todayLogs.length > 0 && <div className="dailyMarkers"><p className="miniSectionTitle">Daily logs</p>{todayLogs.map((log) => <div key={log.id} className="miniLog"><strong>{log.project || 'Daily Log'}</strong><span>{log.summary || 'No summary'}</span></div>)}</div>}
+      {todayLogs.length > 0 && (
+        <div className="dailyMarkers">
+          <p className="miniSectionTitle">Daily logs</p>
+          {todayLogs.map((log) => (
+            <button key={log.id} type="button" className="miniLog calendarLogCard" onClick={() => onOpenDailyLog(log)}>
+              <strong>{log.project || 'Daily Log'}</strong>
+              <span>{log.summary || 'No summary'}</span>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function WeekCalendarView({ date, tasks, dailyLogs, onOpenTask }) {
+function WeekCalendarView({ date, tasks, dailyLogs, onOpenTask, onOpenDailyLog }) {
   const weekDays = useMemo(() => getWeekDays(date), [date]);
   const weekTasks = sortFocusTasks(tasks.filter((task) => task.status !== 'Done' && getTaskSegmentsForWeek(task, weekDays)));
   return (
@@ -707,12 +741,14 @@ function WeekCalendarView({ date, tasks, dailyLogs, onOpenTask }) {
       <div className="weekDays">
         {weekDays.map((day) => {
           const key = formatDate(day);
-          const dayTasks = getTasksForDate(tasks, key).slice(0, 4);
+          const dayTasks = getTasksForDate(tasks, key).slice(0, 3);
+          const dayLogs = dailyLogs.filter((log) => log.date === key).slice(0, 3);
           return (
             <div key={key} className="weekDay">
               <strong>{day.toLocaleDateString(undefined, { weekday: 'short' })}</strong>
               <span>{day.getDate()}</span>
               {dayTasks.map((task) => <button key={task.id} type="button" className={`calendarTaskBar ${getTaskTone(task)}`} onClick={() => onOpenTask(task)}>{task.title}</button>)}
+              {dayLogs.map((log) => <button key={log.id} type="button" className="calendarLogBar" onClick={() => onOpenDailyLog(log)}>{log.summary || log.project || 'Daily Log'}</button>)}
             </div>
           );
         })}
