@@ -21,7 +21,9 @@
           'archDailyWorkDesk.revitTroubleShoot.v2'
         ]
       }).finally(() => {
-        import('/src/main.jsx');
+        import('/src/main.jsx').then(() => {
+          import('/src/uiEnhance.js');
+        });
       });
     </script>
   </body>
