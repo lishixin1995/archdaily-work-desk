@@ -10,7 +10,7 @@
     <script type="module">
       import { bootCloudSync } from '/src/cloudSync.js';
 
-      await bootCloudSync({
+      bootCloudSync({
         app: 'archdaily-work-desk',
         keys: [
           'archDailyWorkDesk.tasks.v2',
@@ -20,8 +20,9 @@
           'archDailyWorkDesk.aiPromptLibrary.v2',
           'archDailyWorkDesk.revitTroubleShoot.v2'
         ]
+      }).finally(() => {
+        import('/src/main.jsx');
       });
     </script>
-    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
