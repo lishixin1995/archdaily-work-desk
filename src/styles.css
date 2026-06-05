@@ -95,7 +95,7 @@ button { cursor: pointer; }
   width: min(1900px, calc(100vw - 28px));
   margin: 0 auto 48px;
   display: grid;
-  grid-template-columns: minmax(0, 2fr) minmax(620px, 3fr);
+  grid-template-columns: minmax(0, 3fr) minmax(520px, 2fr);
   gap: 28px;
   align-items: start;
 }
@@ -701,7 +701,7 @@ textarea { min-height: 122px; resize: vertical; }
 .modalActions button { border: 1px solid var(--line); background: white; color: var(--warmDark); }
 
 @media (max-width: 1450px) {
-  .pageShell { grid-template-columns: minmax(0, 2fr) minmax(560px, 3fr); }
+  .pageShell { grid-template-columns: minmax(0, 3fr) minmax(500px, 2fr); }
   .focusColumns { grid-template-columns: 1fr; }
   .weekDays { grid-template-columns: repeat(2, 1fr); }
   .weekTaskOverlay { display: none; }
