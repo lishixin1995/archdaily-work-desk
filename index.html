@@ -5,11 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ARCH DAILY WORK DESK</title>
     <link rel="stylesheet" href="/uiPatch.css" />
+    <style>
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(163, 102, 58, 0.10), transparent 28%),
+          linear-gradient(135deg, #fbf6ee 0%, #f5efe5 46%, #eee3d5 100%);
+      }
+
+      #bootSplash {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: grid;
+        place-items: center;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(163, 102, 58, 0.10), transparent 28%),
+          linear-gradient(135deg, #fbf6ee 0%, #f5efe5 46%, #eee3d5 100%);
+        color: #1f2933;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        transition: opacity .22s ease, visibility .22s ease;
+      }
+
+      #bootSplash.hide {
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+      }
+
+      .bootCard {
+        width: min(520px, calc(100vw - 48px));
+        padding: 28px 30px;
+        border: 1px solid rgba(124, 91, 56, 0.16);
+        border-radius: 26px;
+        background: rgba(255, 250, 243, 0.74);
+        box-shadow: 0 26px 70px rgba(64, 43, 26, 0.10);
+      }
+
+      .bootEyebrow {
+        margin-bottom: 8px;
+        color: #64748b;
+        font-size: 13px;
+        font-weight: 900;
+        letter-spacing: .32em;
+      }
+
+      .bootTitle {
+        margin: 0;
+        font-size: 38px;
+        line-height: .95;
+        letter-spacing: -.04em;
+      }
+
+      .bootSub {
+        margin: 12px 0 0;
+        color: #64748b;
+        font-size: 15px;
+      }
+    </style>
   </head>
   <body>
+    <div id="bootSplash" aria-hidden="true">
+      <div class="bootCard">
+        <div class="bootEyebrow">ARCH DAILY WORK DESK</div>
+        <h1 class="bootTitle">Opening desk</h1>
+        <p class="bootSub">Syncing your latest notes and tasks...</p>
+      </div>
+    </div>
     <div id="root"></div>
     <script type="module">
       import { bootCloudSync } from '/src/cloudSync.js';
+
+      const hideBootSplash = () => {
+        const splash = document.getElementById('bootSplash');
+        if (splash) splash.classList.add('hide');
+      };
 
       bootCloudSync({
         app: 'archdaily-work-desk',
@@ -25,6 +97,7 @@
         import('/src/main.jsx').then(() => {
           import('/src/uiEnhance.js').then(() => {
             import('/src/uiFinalFix.js');
+            window.setTimeout(hideBootSplash, 120);
           });
         });
       });
