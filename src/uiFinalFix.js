@@ -27,9 +27,17 @@ finalFixStyle.textContent = `
     transform: translateY(12px) !important;
   }
 
-  /* Dashboard saved-task columns: keep slide controls inside each card and stop title overlap. */
+  /* Dashboard saved-task columns: always use the clean full-width Daily-Log-style layout. */
+  .kanbanGrid {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
   .kanbanColumn {
     position: relative !important;
+    width: 100% !important;
+    min-height: 190px !important;
+    box-sizing: border-box !important;
   }
 
   .kanbanColumn > h3 {
@@ -48,24 +56,11 @@ finalFixStyle.textContent = `
     z-index: 80 !important;
   }
 
-  @media (max-width: 1500px) {
-    .kanbanGrid {
-      grid-template-columns: 1fr !important;
-      gap: 16px !important;
-    }
-
-    .kanbanColumn {
-      width: 100% !important;
-      min-height: 190px !important;
-      box-sizing: border-box !important;
-    }
-
-    .kanbanColumn .taskCard {
-      width: 100% !important;
-      max-width: none !important;
-      min-height: 180px !important;
-      box-sizing: border-box !important;
-    }
+  .kanbanColumn .taskCard {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 180px !important;
+    box-sizing: border-box !important;
   }
 `;
 document.head.appendChild(finalFixStyle);
