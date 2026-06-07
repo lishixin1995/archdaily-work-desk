@@ -157,6 +157,24 @@ function normalizeUrl(value) {
   return `https://${raw}`;
 }
 
+function getLinkHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./i, '');
+  } catch {
+    return '';
+  }
+}
+
+function getLinkInitial(link) {
+  const source = link.title || getLinkHost(link.url) || link.category || 'Link';
+  return source.trim().charAt(0).toUpperCase() || 'L';
+}
+
+function getFaviconUrl(url) {
+  const host = getLinkHost(url);
+  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+}
+
 function matchesQuery(item, query) {
   const q = normalize(query);
   if (!q) return true;
@@ -383,13 +401,13 @@ function App() {
   return (
     <>
       <header className="topbar">
-        <div className="brandBlock">
+        <button type="button" className="brandBlock brandHome" onClick={() => setActiveTab('Dashboard')} aria-label="Go to Dashboard">
           <div className="brandMark">A</div>
           <div>
             <h1>ARCH DAILY WORK DESK</h1>
             <p>notes · tasks · code memory</p>
           </div>
-        </div>
+        </button>
         <nav className="mainNav">
           {TABS.map((tab) => (
             <button key={tab} type="button" className={activeTab === tab ? 'active' : ''} onClick={() => setActiveTab(tab)}>{tab}</button>
@@ -656,13 +674,24 @@ function DobNotes({ dobNotes, setDobNotes }) {
         <div className="dobLinkButtons">
           {dobLinks.length === 0 ? (
             <div className="empty compact">No DOB code links saved yet.</div>
-          ) : dobLinks.map((link) => (
-            <div key={link.id} className="dobLinkChip">
-              <a href={link.url} target="_blank" rel="noreferrer">{link.title}</a>
-              <span>{link.category || 'Code'}</span>
-              <button type="button" aria-label={`Delete ${link.title}`} onClick={() => deleteDobLink(link.id)}>×</button>
-            </div>
-          ))}
+          ) : dobLinks.map((link) => {
+            const faviconUrl = getFaviconUrl(link.url);
+            return (
+              <div key={link.id} className="dobLinkChip">
+                <a href={link.url} target="_blank" rel="noreferrer" aria-label={`Open ${link.title}`}>
+                  <span className="dobLinkLogo">
+                    {faviconUrl ? <img src={faviconUrl} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}
+                    <span>{getLinkInitial(link)}</span>
+                  </span>
+                  <strong>{link.title}</strong>
+                </a>
+                <div className="dobLinkMeta">
+                  <span>{link.category || 'Code'}</span>
+                  <button type="button" aria-label={`Delete ${link.title}`} onClick={() => deleteDobLink(link.id)}>×</button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </section>
 
