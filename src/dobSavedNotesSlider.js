@@ -1,0 +1,164 @@
+const DOB_SAVED_SLIDER_STYLE_ID = 'dobSavedNotesSliderStyles';
+
+function isDobNotesActive() {
+  const activeTab = document.querySelector('.mainNav button.active')?.textContent?.trim();
+  const heading = document.querySelector('.pageHeading h2')?.textContent?.trim();
+  return activeTab === 'DOB Notes' || heading === 'DOB Notes';
+}
+
+function getDobSavedNotesGrid() {
+  if (!isDobNotesActive()) return null;
+  const linkPanel = document.querySelector('.dobLinkPanel');
+  const nextGrid = linkPanel?.nextElementSibling;
+  if (nextGrid?.classList?.contains('libraryGrid')) return nextGrid;
+  return document.querySelector('.dobLinkPanel ~ .libraryGrid');
+}
+
+function getDobSavedNoteCards(grid) {
+  return Array.from(grid.children).filter((child) => child.classList.contains('libraryCard'));
+}
+
+function ensureDobSavedNotesControls(grid) {
+  let controls = Array.from(grid.children).find((child) => child.classList.contains('dobSavedNotesControls'));
+  if (controls) return controls;
+
+  controls = document.createElement('div');
+  controls.className = 'dobSavedNotesControls';
+  controls.innerHTML = '<button type="button" class="dobSavedPrev" aria-label="Previous saved DOB note">&lt;</button><span class="dobSavedNotesPosition"></span><button type="button" class="dobSavedNext" aria-label="Next saved DOB note">&gt;</button>';
+  controls.addEventListener('click', (event) => {
+    event.stopPropagation();
+    const button = event.target.closest('button');
+    if (!button) return;
+    const cards = getDobSavedNoteCards(grid);
+    if (!cards.length) return;
+    const current = Number(grid.dataset.dobSavedIndex || 0);
+    const next = button.classList.contains('dobSavedPrev') ? current - 1 : current + 1;
+    setDobSavedNotesIndex(grid, next);
+  });
+  grid.prepend(controls);
+  return controls;
+}
+
+function setDobSavedNotesIndex(grid, requestedIndex) {
+  const cards = getDobSavedNoteCards(grid);
+  const controls = ensureDobSavedNotesControls(grid);
+  const hasCards = cards.length > 0;
+  const maxIndex = Math.max(0, cards.length - 1);
+  const index = Math.min(Math.max(Number.isFinite(requestedIndex) ? requestedIndex : 0, 0), maxIndex);
+
+  grid.dataset.dobSavedIndex = String(index);
+  cards.forEach((card, cardIndex) => {
+    card.classList.toggle('dobSavedNoteActive', cardIndex === index);
+  });
+
+  const position = controls.querySelector('.dobSavedNotesPosition');
+  const prev = controls.querySelector('.dobSavedPrev');
+  const next = controls.querySelector('.dobSavedNext');
+  if (position) position.textContent = hasCards ? `${index + 1} / ${cards.length}` : '';
+  if (prev) prev.disabled = !hasCards || cards.length < 2;
+  if (next) next.disabled = !hasCards || cards.length < 2;
+  controls.hidden = !hasCards;
+}
+
+function enhanceDobSavedNotesSlider() {
+  const grid = getDobSavedNotesGrid();
+  if (!grid) return;
+  grid.classList.add('dobSavedNotesSlider');
+  const current = Number(grid.dataset.dobSavedIndex || 0);
+  setDobSavedNotesIndex(grid, current);
+}
+
+function installDobSavedNotesSliderStyles() {
+  if (document.getElementById(DOB_SAVED_SLIDER_STYLE_ID)) return;
+  const style = document.createElement('style');
+  style.id = DOB_SAVED_SLIDER_STYLE_ID;
+  style.textContent = `
+    .dobSavedNotesSlider {
+      position: relative;
+      display: block;
+      width: 100%;
+    }
+
+    .dobSavedNotesSlider .libraryCard {
+      display: none;
+      width: 100%;
+      min-height: 190px;
+      margin: 0;
+      padding-right: 116px;
+    }
+
+    .dobSavedNotesSlider .libraryCard.dobSavedNoteActive {
+      display: block;
+    }
+
+    .dobSavedNotesSlider .wideEmpty {
+      display: block;
+      width: 100%;
+    }
+
+    .dobSavedNotesControls {
+      position: absolute;
+      top: 12px;
+      right: 14px;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(255, 250, 243, .78);
+      backdrop-filter: blur(8px);
+    }
+
+    .dobSavedNotesControls[hidden] {
+      display: none;
+    }
+
+    .dobSavedNotesControls button {
+      width: 34px;
+      height: 34px;
+      border: 0;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--danger);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+      display: grid;
+      place-items: center;
+      padding: 0;
+    }
+
+    .dobSavedNotesControls button:hover:not(:disabled) {
+      background: rgba(180, 66, 58, .10);
+    }
+
+    .dobSavedNotesControls button:disabled {
+      opacity: .3;
+      cursor: default;
+    }
+
+    .dobSavedNotesPosition {
+      min-width: 42px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    @media (max-width: 720px) {
+      .dobSavedNotesSlider .libraryCard {
+        padding-right: 16px;
+        padding-top: 56px;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+installDobSavedNotesSliderStyles();
+const dobSavedNotesSliderObserver = new MutationObserver(() => window.setTimeout(enhanceDobSavedNotesSlider, 80));
+dobSavedNotesSliderObserver.observe(document.body, { childList: true, subtree: true });
+window.addEventListener('load', enhanceDobSavedNotesSlider);
+window.setInterval(enhanceDobSavedNotesSlider, 700);
+enhanceDobSavedNotesSlider();
