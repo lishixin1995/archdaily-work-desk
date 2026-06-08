@@ -1,4 +1,5 @@
 const DOB_SAVED_SLIDER_STYLE_ID = 'dobSavedNotesSliderStyles';
+let dobSavedNotesSliderFrame = 0;
 
 function isDobNotesActive() {
   const activeTab = document.querySelector('.mainNav button.active')?.textContent?.trim();
@@ -18,6 +19,10 @@ function getDobSavedNoteCards(grid) {
   return Array.from(grid.children).filter((child) => child.classList.contains('libraryCard'));
 }
 
+function getDobSavedNotesSignature(cards) {
+  return cards.map((card) => card.textContent?.trim().slice(0, 140) || '').join('|');
+}
+
 function ensureDobSavedNotesControls(grid) {
   let controls = Array.from(grid.children).find((child) => child.classList.contains('dobSavedNotesControls'));
   if (controls) return controls;
@@ -33,22 +38,29 @@ function ensureDobSavedNotesControls(grid) {
     if (!cards.length) return;
     const current = Number(grid.dataset.dobSavedIndex || 0);
     const next = button.classList.contains('dobSavedPrev') ? current - 1 : current + 1;
-    setDobSavedNotesIndex(grid, next);
+    setDobSavedNotesIndex(grid, next, true);
   });
   grid.prepend(controls);
   return controls;
 }
 
-function setDobSavedNotesIndex(grid, requestedIndex) {
+function setDobSavedNotesIndex(grid, requestedIndex, force = false) {
   const cards = getDobSavedNoteCards(grid);
   const controls = ensureDobSavedNotesControls(grid);
   const hasCards = cards.length > 0;
   const maxIndex = Math.max(0, cards.length - 1);
   const index = Math.min(Math.max(Number.isFinite(requestedIndex) ? requestedIndex : 0, 0), maxIndex);
+  const signature = getDobSavedNotesSignature(cards);
+
+  if (!force && grid.dataset.dobSavedIndex === String(index) && grid.dataset.dobSavedSignature === signature) return;
 
   grid.dataset.dobSavedIndex = String(index);
+  grid.dataset.dobSavedSignature = signature;
   cards.forEach((card, cardIndex) => {
-    card.classList.toggle('dobSavedNoteActive', cardIndex === index);
+    const shouldShow = cardIndex === index;
+    if (card.classList.contains('dobSavedNoteActive') !== shouldShow) {
+      card.classList.toggle('dobSavedNoteActive', shouldShow);
+    }
   });
 
   const position = controls.querySelector('.dobSavedNotesPosition');
@@ -66,6 +78,23 @@ function enhanceDobSavedNotesSlider() {
   grid.classList.add('dobSavedNotesSlider');
   const current = Number(grid.dataset.dobSavedIndex || 0);
   setDobSavedNotesIndex(grid, current);
+}
+
+function scheduleDobSavedNotesSlider() {
+  if (dobSavedNotesSliderFrame) return;
+  dobSavedNotesSliderFrame = requestAnimationFrame(() => {
+    dobSavedNotesSliderFrame = 0;
+    enhanceDobSavedNotesSlider();
+  });
+}
+
+function mutationTouchesSavedNotes(mutation) {
+  const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
+  return nodes.some((node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return false;
+    return node.matches?.('.dobLinkPanel, .libraryGrid, .libraryCard, .pageHeading, .mainNav')
+      || node.querySelector?.('.dobLinkPanel, .libraryGrid, .libraryCard, .pageHeading, .mainNav');
+  });
 }
 
 function installDobSavedNotesSliderStyles() {
@@ -157,8 +186,13 @@ function installDobSavedNotesSliderStyles() {
 }
 
 installDobSavedNotesSliderStyles();
-const dobSavedNotesSliderObserver = new MutationObserver(() => window.setTimeout(enhanceDobSavedNotesSlider, 80));
+const dobSavedNotesSliderObserver = new MutationObserver((mutations) => {
+  if (mutations.some(mutationTouchesSavedNotes)) scheduleDobSavedNotesSlider();
+});
 dobSavedNotesSliderObserver.observe(document.body, { childList: true, subtree: true });
-window.addEventListener('load', enhanceDobSavedNotesSlider);
-window.setInterval(enhanceDobSavedNotesSlider, 700);
-enhanceDobSavedNotesSlider();
+document.addEventListener('click', (event) => {
+  if (event.target.closest('.mainNav button, .cardActions button, .dobSavedNotesControls button')) scheduleDobSavedNotesSlider();
+}, true);
+window.addEventListener('load', scheduleDobSavedNotesSlider);
+window.addEventListener('storage', scheduleDobSavedNotesSlider);
+scheduleDobSavedNotesSlider();
