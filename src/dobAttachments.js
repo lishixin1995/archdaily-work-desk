@@ -1,6 +1,8 @@
 const DOB_NOTES_KEY = 'archDailyWorkDesk.dobNotes.v2';
 const pendingAttachmentsByForm = new WeakMap();
+const pendingPreviewSignatures = new WeakMap();
 const supportedAttachmentTypes = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/*';
+let dobAttachmentEnhanceFrame = 0;
 
 function attachmentUid() {
   if (crypto?.randomUUID) return crypto.randomUUID();
@@ -127,27 +129,43 @@ function getDobFormValues(form) {
 }
 
 function setDropLabelText(label) {
+  if (label.dataset.dobAttachmentTextReady) return;
   const textNode = Array.from(label.childNodes).find((node) => node.nodeType === Node.TEXT_NODE && node.textContent.includes('Screenshot upload'));
   if (textNode) textNode.textContent = 'Attachment upload';
   const help = label.querySelector(':scope > span');
   if (help) help.textContent = 'Drag screenshots, PDF, or Word documents here, or click to browse/upload.';
+  label.dataset.dobAttachmentTextReady = 'true';
 }
 
 function getPendingAttachments(form) {
   return pendingAttachmentsByForm.get(form) || [];
 }
 
-function setPendingAttachments(form, attachments) {
-  pendingAttachmentsByForm.set(form, attachments);
-  renderPendingAttachments(form);
+function getAttachmentSignature(attachments) {
+  return attachments.map((attachment) => `${attachment.id}:${attachment.name}:${attachment.size}`).join('|');
 }
 
-function renderPendingAttachments(form) {
+function setPendingAttachments(form, attachments) {
+  pendingAttachmentsByForm.set(form, attachments);
+  renderPendingAttachments(form, true);
+}
+
+function renderPendingAttachments(form, force = false) {
   const label = form.querySelector('.screenshotDrop');
   if (!label) return;
-  label.querySelector('.dobAttachmentPreviewGrid')?.remove();
   const attachments = getPendingAttachments(form);
-  if (!attachments.length) return;
+  const signature = getAttachmentSignature(attachments);
+  const existing = label.querySelector('.dobAttachmentPreviewGrid');
+
+  if (!attachments.length) {
+    existing?.remove();
+    pendingPreviewSignatures.delete(form);
+    return;
+  }
+
+  if (!force && existing && pendingPreviewSignatures.get(form) === signature) return;
+  existing?.remove();
+  pendingPreviewSignatures.set(form, signature);
 
   const grid = document.createElement('div');
   grid.className = 'dobAttachmentPreviewGrid';
@@ -192,7 +210,7 @@ function attachPendingFilesToLatestNote(form, snapshot) {
   target.updatedAt = new Date().toISOString();
   writeStoredDobNotes(notes);
   pendingAttachmentsByForm.delete(form);
-  renderPendingAttachments(form);
+  renderPendingAttachments(form, true);
 }
 
 function createAttachmentSection(attachments) {
@@ -272,8 +290,8 @@ function enhanceDobUpload() {
   if (!label || !input) return;
 
   setDropLabelText(label);
-  input.multiple = true;
-  input.accept = supportedAttachmentTypes;
+  if (!input.multiple) input.multiple = true;
+  if (input.accept !== supportedAttachmentTypes) input.accept = supportedAttachmentTypes;
 
   if (!input.dataset.dobAttachmentsBound) {
     input.dataset.dobAttachmentsBound = 'true';
@@ -292,7 +310,10 @@ function enhanceDobUpload() {
     }, true);
     form.addEventListener('submit', () => {
       const snapshot = getDobFormValues(form);
-      window.setTimeout(() => attachPendingFilesToLatestNote(form, snapshot), 700);
+      window.setTimeout(() => {
+        attachPendingFilesToLatestNote(form, snapshot);
+        scheduleDobAttachmentEnhancement();
+      }, 700);
     }, true);
   }
 
@@ -326,9 +347,31 @@ function installDobAttachmentStyles() {
   document.head.appendChild(style);
 }
 
+function mutationTouchesDobUi(mutation) {
+  const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
+  return nodes.some((node) => {
+    if (node.nodeType !== Node.ELEMENT_NODE) return false;
+    return node.matches?.('.screenshotDrop, .detailModal, .modalOverlay, .pageHeading, .mainNav, form.cardForm')
+      || node.querySelector?.('.screenshotDrop, .detailModal, .modalOverlay, .pageHeading, .mainNav, form.cardForm');
+  });
+}
+
+function scheduleDobAttachmentEnhancement() {
+  if (dobAttachmentEnhanceFrame) return;
+  dobAttachmentEnhanceFrame = requestAnimationFrame(() => {
+    dobAttachmentEnhanceFrame = 0;
+    enhanceDobUpload();
+  });
+}
+
 installDobAttachmentStyles();
-const dobAttachmentObserver = new MutationObserver(() => window.setTimeout(enhanceDobUpload, 80));
+const dobAttachmentObserver = new MutationObserver((mutations) => {
+  if (mutations.some(mutationTouchesDobUi)) scheduleDobAttachmentEnhancement();
+});
 dobAttachmentObserver.observe(document.body, { childList: true, subtree: true });
-window.addEventListener('load', enhanceDobUpload);
-window.setInterval(enhanceDobUpload, 700);
-enhanceDobUpload();
+document.addEventListener('click', (event) => {
+  if (event.target.closest('.mainNav button, .cardActions button, .modalClose')) scheduleDobAttachmentEnhancement();
+}, true);
+window.addEventListener('load', scheduleDobAttachmentEnhancement);
+window.addEventListener('storage', scheduleDobAttachmentEnhancement);
+scheduleDobAttachmentEnhancement();
