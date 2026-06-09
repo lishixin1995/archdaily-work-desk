@@ -221,6 +221,39 @@ function calendarOverflowPatch() {
           );
 
         next = next.replace(
+          `function useStoredArray(primaryKey, legacyKeys = []) {
+  const [items, setItems] = useState(() => readArray(primaryKey, legacyKeys));
+  useEffect(() => {
+    localStorage.setItem(primaryKey, JSON.stringify(items));
+  }, [primaryKey, items]);
+  return [items, setItems];
+}`,
+          `function useStoredArray(primaryKey, legacyKeys = []) {
+  const [items, setItems] = useState(() => readArray(primaryKey, legacyKeys));
+  useEffect(() => {
+    localStorage.setItem(primaryKey, JSON.stringify(items));
+  }, [primaryKey, items]);
+
+  useEffect(() => {
+    function syncFromStorage(event) {
+      const changedKey = event?.detail?.key || event?.key;
+      if (changedKey && changedKey !== primaryKey && !legacyKeys.includes(changedKey)) return;
+      setItems(readArray(primaryKey, legacyKeys));
+    }
+
+    window.addEventListener('storage', syncFromStorage);
+    window.addEventListener('archDailyWorkDesk:localDataChanged', syncFromStorage);
+    return () => {
+      window.removeEventListener('storage', syncFromStorage);
+      window.removeEventListener('archDailyWorkDesk:localDataChanged', syncFromStorage);
+    };
+  }, [primaryKey, legacyKeys]);
+
+  return [items, setItems];
+}`
+        );
+
+        next = next.replace(
           "const REVIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];",
           "const REVIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];\nconst REVIT_ATTACHMENT_ACCEPT = '.pdf,.docx,.jpeg,.jpg,.png,image/jpeg,image/png,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document';\nconst REVIT_ATTACHMENT_TYPES = new Set(['image/jpeg', 'image/png', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']);\nconst REVIT_ATTACHMENT_EXTENSIONS = /\\.(pdf|docx|jpe?g|png)$/i;"
         );
@@ -280,6 +313,18 @@ function calendarOverflowPatch() {
         );
 
         next = next.replace(/function RevitTroubleShoot\(\{ revitLogs, setRevitLogs \}\) \{[\s\S]*?\n\}\n\nfunction NoteCards/, `${revitTroubleShootReplacement}\n\nfunction NoteCards`);
+
+        return next === code ? null : { code: next, map: null };
+      }
+
+      if (normalizedId.endsWith('/src/savedNotesEdit.js')) {
+        const next = code.replace(
+          `    close();
+    window.location.reload();`,
+          `    close();
+    window.dispatchEvent(new CustomEvent('archDailyWorkDesk:localDataChanged', { detail: { key: SAVED_NOTES_KEYS[kind] } }));
+    window.setTimeout(enhanceAllSavedNotesEdit, 80);`
+        );
 
         return next === code ? null : { code: next, map: null };
       }
