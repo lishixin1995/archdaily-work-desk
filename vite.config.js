@@ -6,8 +6,17 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
+  const [page, setPage] = useState(0);
   const [openLog, setOpenLog] = useState(null);
   const filtered = revitLogs.filter((log) => matchesQuery(log, search) && (category === 'All' || log.category === category));
+  const pageSize = 3;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages - 1);
+  const pagedLogs = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+
+  useEffect(() => {
+    setPage(0);
+  }, [search, category, revitLogs.length]);
 
   async function addAttachments(files) {
     const fileList = Array.from(files || []);
@@ -52,8 +61,19 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
         )}
         <button type="submit" className="primary wide">Add Trouble Shoot</button>
       </form>
-      <section className="libraryGrid">
-        {filtered.length === 0 ? <div className="empty wideEmpty">No Revit troubleshooting notes yet.</div> : filtered.map((log) => {
+      <div className="revitSavedHead">
+        <div>
+          <p className="eyebrow">Saved Revit Memory</p>
+          <h3>Trouble Shoot Cards</h3>
+        </div>
+        <div className="revitSlideControls">
+          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={safePage <= 0}>‹</button>
+          <span>{filtered.length ? safePage + 1 : 0} / {filtered.length ? totalPages : 0}</span>
+          <button type="button" onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))} disabled={!filtered.length || safePage + 1 >= totalPages}>›</button>
+        </div>
+      </div>
+      <section className="libraryGrid revitTroubleList">
+        {pagedLogs.length === 0 ? <div className="empty wideEmpty">No Revit troubleshooting notes yet.</div> : pagedLogs.map((log) => {
           const attachmentCount = getRevitAttachments(log).length;
           return (
             <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
@@ -123,6 +143,50 @@ const revitAttachmentCss = `
   color: var(--warmDark);
   padding: 6px 10px;
   font-weight: 850;
+}
+.revitSavedHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 8px 0 12px;
+}
+.revitSavedHead h3 {
+  margin: 0;
+  font-size: 22px;
+}
+.revitSlideControls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.revitSlideControls button {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255,255,255,.78);
+  color: var(--warmDark);
+  font-size: 24px;
+  font-weight: 900;
+  line-height: 1;
+}
+.revitSlideControls button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+.revitSlideControls span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+.revitTroubleList {
+  grid-template-columns: 1fr !important;
+}
+.revitTroubleList .libraryCard {
+  width: 100%;
+  min-height: 0;
 }
 .modalAttachmentGrid {
   display: grid;
