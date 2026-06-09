@@ -1,5 +1,13 @@
 const finalFixStyle = document.createElement('style');
 finalFixStyle.textContent = `
+  /* Keep the main menu above filter panels, sliders, and calendar content while scrolling. */
+  .topbar {
+    position: sticky !important;
+    top: 8px !important;
+    z-index: 1000 !important;
+    isolation: isolate !important;
+  }
+
   /* Final daily-log saved note fix: the NOTE CARD is full width. No extra bottom frame. */
   .libraryGrid.oneThird {
     width: 100% !important;
