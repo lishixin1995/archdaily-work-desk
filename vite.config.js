@@ -68,7 +68,7 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
           );
         })}
       </section>
-      {openLog && <FullNoteModal open eyebrow="Revit Trouble Shoot" title={openLog.issue || 'Untitled Issue'} meta={[["Date", niceDate(openLog.date)], ["Category", openLog.category], ["Attachments", getRevitAttachments(openLog).length ? getRevitAttachments(openLog).length + ' saved' : '-']]} sections={[["Problem description", openLog.problem], ["Solution / notes", openLog.solution]]} images={getRevitImageAttachments(openLog)} attachments={getRevitFileAttachments(openLog)} copyText={[openLog.issue || '', '', openLog.problem || '', '', openLog.solution || ''].join('\n')} onClose={() => setOpenLog(null)} />}
+      {openLog && <FullNoteModal open eyebrow="Revit Trouble Shoot" title={openLog.issue || 'Untitled Issue'} meta={[["Date", niceDate(openLog.date)], ["Category", openLog.category], ["Attachments", getRevitAttachments(openLog).length ? getRevitAttachments(openLog).length + ' saved' : '-']]} sections={[["Problem description", openLog.problem], ["Solution / notes", openLog.solution]]} images={getRevitImageAttachments(openLog)} attachments={getRevitFileAttachments(openLog)} copyText={[openLog.issue || '', '', openLog.problem || '', '', openLog.solution || ''].join(String.fromCharCode(10))} onClose={() => setOpenLog(null)} />}
     </>
   );
 }`;
