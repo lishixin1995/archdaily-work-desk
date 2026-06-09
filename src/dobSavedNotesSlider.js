@@ -112,19 +112,16 @@ function installDobSavedNotesSliderStyles() {
   style.textContent = `
     .dobSavedNotesSlider {
       position: relative;
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 16px;
+      display: block;
       width: 100%;
-      padding-top: 0;
     }
 
     .dobSavedNotesSlider .libraryCard {
       display: none;
       width: 100%;
       min-height: 190px;
-      margin: 0;
-      padding-right: 16px;
+      margin: 0 0 16px;
+      padding-right: 116px;
     }
 
     .dobSavedNotesSlider .libraryCard.dobSavedNoteActive {
@@ -134,7 +131,6 @@ function installDobSavedNotesSliderStyles() {
     .dobSavedNotesSlider .wideEmpty {
       display: block;
       width: 100%;
-      grid-column: 1 / -1;
     }
 
     .dobSavedNotesControls {
@@ -188,10 +184,6 @@ function installDobSavedNotesSliderStyles() {
     }
 
     @media (max-width: 720px) {
-      .dobSavedNotesSlider {
-        grid-template-columns: 1fr;
-      }
-
       .dobSavedNotesSlider .libraryCard {
         padding-right: 16px;
         padding-top: 56px;
