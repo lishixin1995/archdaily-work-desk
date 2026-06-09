@@ -72,31 +72,66 @@ async function saveCloudValue(app, key, data) {
   return response.json();
 }
 
+function sendCloudBeacon(app, key, data) {
+  if (!navigator.sendBeacon) return false;
+  try {
+    const payload = JSON.stringify({ app, key, data });
+    return navigator.sendBeacon('/api/cloud-data', new Blob([payload], { type: 'application/json' }));
+  } catch {
+    return false;
+  }
+}
+
 export async function bootCloudSync({ app, keys }) {
   const watchedKeys = new Set(keys || []);
   const nativeSetItem = window.localStorage.setItem.bind(window.localStorage);
   const nativeRemoveItem = window.localStorage.removeItem.bind(window.localStorage);
   const timers = new Map();
+  const pending = new Map();
 
   window.__personalCloudSync = {
     app,
     ready: false,
-    status: 'Starting cloud sync...'
+    status: 'Starting cloud sync...',
+    async saveNow(key, rawValue = window.localStorage.getItem(key)) {
+      return saveNow(key, rawValue);
+    }
   };
+
+  async function saveNow(key, rawValue = window.localStorage.getItem(key)) {
+    if (!watchedKeys.has(key)) return;
+    window.clearTimeout(timers.get(key));
+    timers.delete(key);
+
+    try {
+      const parsed = safeParseJson(rawValue, rawValue);
+      pending.set(key, parsed);
+      await saveCloudValue(app, key, parsed);
+      pending.delete(key);
+      window.__personalCloudSync.status = 'Saved to cloud.';
+    } catch (error) {
+      console.warn('[cloudSync] save failed', key, error);
+      window.__personalCloudSync.status = 'Cloud save failed; local cache kept until retry.';
+    }
+  }
 
   function scheduleSave(key, rawValue) {
     if (!watchedKeys.has(key)) return;
+    const parsed = safeParseJson(rawValue, rawValue);
+    pending.set(key, parsed);
     window.clearTimeout(timers.get(key));
-    timers.set(key, window.setTimeout(async () => {
-      try {
-        const parsed = safeParseJson(rawValue, rawValue);
-        await saveCloudValue(app, key, parsed);
-        window.__personalCloudSync.status = 'Saved to cloud.';
-      } catch (error) {
-        console.warn('[cloudSync] save failed', key, error);
-        window.__personalCloudSync.status = 'Cloud save failed; local copy kept.';
-      }
-    }, 450));
+    timers.set(key, window.setTimeout(() => {
+      saveNow(key, rawValue);
+    }, 80));
+  }
+
+  function flushPendingWithBeacon() {
+    for (const key of watchedKeys) {
+      const rawValue = window.localStorage.getItem(key);
+      if (rawValue === null && !pending.has(key)) continue;
+      const data = pending.has(key) ? pending.get(key) : safeParseJson(rawValue, rawValue);
+      sendCloudBeacon(app, key, data);
+    }
   }
 
   for (const key of watchedKeys) {
@@ -124,6 +159,15 @@ export async function bootCloudSync({ app, keys }) {
     nativeRemoveItem(key);
     if (watchedKeys.has(key)) scheduleSave(key, 'null');
   };
+
+  window.addEventListener('archDailyWorkDesk:localDataChanged', (event) => {
+    const key = event?.detail?.key;
+    if (watchedKeys.has(key)) saveNow(key);
+  });
+  window.addEventListener('pagehide', flushPendingWithBeacon);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushPendingWithBeacon();
+  });
 
   window.__personalCloudSync.ready = true;
   window.__personalCloudSync.status = 'Cloud sync ready.';
