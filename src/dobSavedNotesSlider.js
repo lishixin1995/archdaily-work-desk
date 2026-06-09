@@ -1,4 +1,5 @@
 const DOB_SAVED_SLIDER_STYLE_ID = 'dobSavedNotesSliderStyles';
+const DOB_SAVED_NOTES_PAGE_SIZE = 3;
 let dobSavedNotesSliderFrame = 0;
 
 function isDobNotesActive() {
@@ -23,41 +24,48 @@ function getDobSavedNotesSignature(cards) {
   return cards.map((card) => card.textContent?.trim().slice(0, 140) || '').join('|');
 }
 
+function getDobSavedNotesPageCount(cards) {
+  return Math.max(1, Math.ceil(cards.length / DOB_SAVED_NOTES_PAGE_SIZE));
+}
+
 function ensureDobSavedNotesControls(grid) {
   let controls = Array.from(grid.children).find((child) => child.classList.contains('dobSavedNotesControls'));
   if (controls) return controls;
 
   controls = document.createElement('div');
   controls.className = 'dobSavedNotesControls';
-  controls.innerHTML = '<button type="button" class="dobSavedPrev" aria-label="Previous saved DOB note">&lt;</button><span class="dobSavedNotesPosition"></span><button type="button" class="dobSavedNext" aria-label="Next saved DOB note">&gt;</button>';
+  controls.innerHTML = '<button type="button" class="dobSavedPrev" aria-label="Previous saved DOB notes page">&lt;</button><span class="dobSavedNotesPosition"></span><button type="button" class="dobSavedNext" aria-label="Next saved DOB notes page">&gt;</button>';
   controls.addEventListener('click', (event) => {
     event.stopPropagation();
     const button = event.target.closest('button');
     if (!button) return;
     const cards = getDobSavedNoteCards(grid);
     if (!cards.length) return;
-    const current = Number(grid.dataset.dobSavedIndex || 0);
+    const current = Number(grid.dataset.dobSavedPage || 0);
     const next = button.classList.contains('dobSavedPrev') ? current - 1 : current + 1;
-    setDobSavedNotesIndex(grid, next, true);
+    setDobSavedNotesPage(grid, next, true);
   });
   grid.prepend(controls);
   return controls;
 }
 
-function setDobSavedNotesIndex(grid, requestedIndex, force = false) {
+function setDobSavedNotesPage(grid, requestedPage, force = false) {
   const cards = getDobSavedNoteCards(grid);
   const controls = ensureDobSavedNotesControls(grid);
   const hasCards = cards.length > 0;
-  const maxIndex = Math.max(0, cards.length - 1);
-  const index = Math.min(Math.max(Number.isFinite(requestedIndex) ? requestedIndex : 0, 0), maxIndex);
+  const pageCount = getDobSavedNotesPageCount(cards);
+  const maxPage = Math.max(0, pageCount - 1);
+  const page = Math.min(Math.max(Number.isFinite(requestedPage) ? requestedPage : 0, 0), maxPage);
   const signature = getDobSavedNotesSignature(cards);
 
-  if (!force && grid.dataset.dobSavedIndex === String(index) && grid.dataset.dobSavedSignature === signature) return;
+  if (!force && grid.dataset.dobSavedPage === String(page) && grid.dataset.dobSavedSignature === signature) return;
 
-  grid.dataset.dobSavedIndex = String(index);
+  grid.dataset.dobSavedPage = String(page);
   grid.dataset.dobSavedSignature = signature;
+  const firstVisible = page * DOB_SAVED_NOTES_PAGE_SIZE;
+  const lastVisible = firstVisible + DOB_SAVED_NOTES_PAGE_SIZE;
   cards.forEach((card, cardIndex) => {
-    const shouldShow = cardIndex === index;
+    const shouldShow = cardIndex >= firstVisible && cardIndex < lastVisible;
     if (card.classList.contains('dobSavedNoteActive') !== shouldShow) {
       card.classList.toggle('dobSavedNoteActive', shouldShow);
     }
@@ -66,9 +74,9 @@ function setDobSavedNotesIndex(grid, requestedIndex, force = false) {
   const position = controls.querySelector('.dobSavedNotesPosition');
   const prev = controls.querySelector('.dobSavedPrev');
   const next = controls.querySelector('.dobSavedNext');
-  if (position) position.textContent = hasCards ? `${index + 1} / ${cards.length}` : '';
-  if (prev) prev.disabled = !hasCards || cards.length < 2;
-  if (next) next.disabled = !hasCards || cards.length < 2;
+  if (position) position.textContent = hasCards ? `${page + 1} / ${pageCount}` : '';
+  if (prev) prev.disabled = !hasCards || pageCount < 2;
+  if (next) next.disabled = !hasCards || pageCount < 2;
   controls.hidden = !hasCards;
 }
 
@@ -76,8 +84,8 @@ function enhanceDobSavedNotesSlider() {
   const grid = getDobSavedNotesGrid();
   if (!grid) return;
   grid.classList.add('dobSavedNotesSlider');
-  const current = Number(grid.dataset.dobSavedIndex || 0);
-  setDobSavedNotesIndex(grid, current);
+  const current = Number(grid.dataset.dobSavedPage || grid.dataset.dobSavedIndex || 0);
+  setDobSavedNotesPage(grid, current);
 }
 
 function scheduleDobSavedNotesSlider() {
@@ -104,8 +112,11 @@ function installDobSavedNotesSliderStyles() {
   style.textContent = `
     .dobSavedNotesSlider {
       position: relative;
-      display: block;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
       width: 100%;
+      padding-top: 0;
     }
 
     .dobSavedNotesSlider .libraryCard {
@@ -113,7 +124,7 @@ function installDobSavedNotesSliderStyles() {
       width: 100%;
       min-height: 190px;
       margin: 0;
-      padding-right: 116px;
+      padding-right: 16px;
     }
 
     .dobSavedNotesSlider .libraryCard.dobSavedNoteActive {
@@ -123,6 +134,7 @@ function installDobSavedNotesSliderStyles() {
     .dobSavedNotesSlider .wideEmpty {
       display: block;
       width: 100%;
+      grid-column: 1 / -1;
     }
 
     .dobSavedNotesControls {
@@ -176,6 +188,10 @@ function installDobSavedNotesSliderStyles() {
     }
 
     @media (max-width: 720px) {
+      .dobSavedNotesSlider {
+        grid-template-columns: 1fr;
+      }
+
       .dobSavedNotesSlider .libraryCard {
         padding-right: 16px;
         padding-top: 56px;
