@@ -33,6 +33,10 @@ function uid() {
   return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+function nowTimestamp() {
+  return new Date().toISOString();
+}
+
 function safeParse(value, fallback = []) {
   try {
     const parsed = JSON.parse(value);
@@ -60,6 +64,22 @@ function useStoredArray(primaryKey, legacyKeys = []) {
   useEffect(() => {
     localStorage.setItem(primaryKey, JSON.stringify(items));
   }, [primaryKey, items]);
+
+  useEffect(() => {
+    function syncFromStorage(event) {
+      const changedKey = event?.detail?.key || event?.key;
+      if (changedKey && changedKey !== primaryKey && !legacyKeys.includes(changedKey)) return;
+      setItems(readArray(primaryKey, legacyKeys));
+    }
+
+    window.addEventListener('storage', syncFromStorage);
+    window.addEventListener('archDailyWorkDesk:localDataChanged', syncFromStorage);
+    return () => {
+      window.removeEventListener('storage', syncFromStorage);
+      window.removeEventListener('archDailyWorkDesk:localDataChanged', syncFromStorage);
+    };
+  }, [primaryKey, legacyKeys]);
+
   return [items, setItems];
 }
 
@@ -462,12 +482,13 @@ function TaskDashboard({ tasks, setTasks, onOpenTask }) {
   function addTask(event) {
     event.preventDefault();
     if (!form.title.trim()) return;
-    setTasks([{ ...form, title: form.title.trim(), id: uid(), createdAt: new Date().toISOString() }, ...tasks]);
+    const now = nowTimestamp();
+    setTasks([{ ...form, title: form.title.trim(), id: uid(), createdAt: now, updatedAt: now }, ...tasks]);
     setForm({ title: '', project: form.project, startDate: todayISO(), dueDate: todayISO(), priority: 'Medium', status: 'Not Started', notes: '' });
   }
 
   function updateTask(id, patch) {
-    setTasks(tasks.map((task) => (task.id === id ? { ...task, ...patch, updatedAt: new Date().toISOString() } : task)));
+    setTasks(tasks.map((task) => (task.id === id ? { ...task, ...patch, updatedAt: nowTimestamp() } : task)));
   }
 
   function deleteTask(id) {
@@ -532,7 +553,8 @@ function DailyTaskLog({ dailyLogs, setDailyLogs }) {
   function addLog(event) {
     event.preventDefault();
     if (!form.summary.trim() && !form.notes.trim()) return;
-    setDailyLogs([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...dailyLogs]);
+    const now = nowTimestamp();
+    setDailyLogs([{ ...form, id: uid(), createdAt: now, updatedAt: now }, ...dailyLogs]);
     setForm({ date: todayISO(), project: form.project, summary: '', notes: '' });
   }
 
@@ -601,7 +623,8 @@ function DobNotes({ dobNotes, setDobNotes }) {
   function addNote(event) {
     event.preventDefault();
     if (!form.title.trim() && !form.notes.trim()) return;
-    setDobNotes([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...dobNotes]);
+    const now = nowTimestamp();
+    setDobNotes([{ ...form, id: uid(), createdAt: now, updatedAt: now }, ...dobNotes]);
     setForm({ date: todayISO(), category: form.category, title: '', notes: '', screenshot: null });
   }
 
@@ -609,7 +632,8 @@ function DobNotes({ dobNotes, setDobNotes }) {
     event.preventDefault();
     const url = normalizeUrl(linkForm.url);
     if (!linkForm.title.trim() || !url) return;
-    setDobLinks([{ ...linkForm, title: linkForm.title.trim(), url, id: uid(), createdAt: new Date().toISOString() }, ...dobLinks]);
+    const now = nowTimestamp();
+    setDobLinks([{ ...linkForm, title: linkForm.title.trim(), url, id: uid(), createdAt: now, updatedAt: now }, ...dobLinks]);
     setLinkForm({ title: '', url: '', category: linkForm.category });
   }
 
@@ -712,12 +736,13 @@ function PromptLibrary({ prompts, setPrompts }) {
   function addPrompt(event) {
     event.preventDefault();
     if (!form.title.trim() && !form.prompt.trim()) return;
-    setPrompts([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...prompts]);
+    const now = nowTimestamp();
+    setPrompts([{ ...form, id: uid(), createdAt: now, updatedAt: now }, ...prompts]);
     setForm({ category: form.category, title: '', prompt: '', favorite: false });
   }
 
   function toggleFavorite(id) {
-    setPrompts(prompts.map((prompt) => prompt.id === id ? { ...prompt, favorite: !prompt.favorite } : prompt));
+    setPrompts(prompts.map((prompt) => prompt.id === id ? { ...prompt, favorite: !prompt.favorite, updatedAt: nowTimestamp() } : prompt));
   }
 
   return (
@@ -761,7 +786,8 @@ function RevitTroubleShoot({ revitLogs, setRevitLogs }) {
   function addLog(event) {
     event.preventDefault();
     if (!form.issue.trim() && !form.problem.trim() && !form.solution.trim()) return;
-    setRevitLogs([{ ...form, id: uid(), createdAt: new Date().toISOString() }, ...revitLogs]);
+    const now = nowTimestamp();
+    setRevitLogs([{ ...form, id: uid(), createdAt: now, updatedAt: now }, ...revitLogs]);
     setForm({ date: todayISO(), category: form.category, issue: '', problem: '', solution: '' });
   }
 

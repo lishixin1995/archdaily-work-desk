@@ -33,7 +33,8 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
   function addLog(event) {
     event.preventDefault();
     if (!form.issue.trim() && !form.problem.trim() && !form.solution.trim() && !(form.attachments || []).length) return;
-    setRevitLogs([{ ...form, attachments: form.attachments || [], id: uid(), createdAt: new Date().toISOString() }, ...revitLogs]);
+    const now = new Date().toISOString();
+    setRevitLogs([{ ...form, attachments: form.attachments || [], id: uid(), createdAt: now, updatedAt: now }, ...revitLogs]);
     setForm({ ...emptyForm, category: form.category, date: todayISO() });
   }
 

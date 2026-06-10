@@ -185,7 +185,12 @@ function readStoredArray(key) {
 }
 
 function writeStoredArray(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  const rawValue = JSON.stringify(value);
+  localStorage.setItem(key, rawValue);
+  if (typeof window.__archDailySaveCloudNow === 'function') {
+    return window.__archDailySaveCloudNow(key, rawValue);
+  }
+  return Promise.resolve(false);
 }
 
 function formatLocalDate(date) {
@@ -285,9 +290,10 @@ function openFinalEditModal(kind, item) {
     if (event.target === overlay) close();
   });
   overlay.querySelector('[data-action="cancel"]').addEventListener('click', close);
-  overlay.querySelector('form').addEventListener('submit', (event) => {
+  overlay.querySelector('form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
+    let changedKey = '';
     if (isTask) {
       const tasks = readStoredArray(FINAL_TASKS_KEY);
       const next = tasks.map((task) => task.id === item.id ? {
@@ -301,7 +307,8 @@ function openFinalEditModal(kind, item) {
         notes: String(data.get('notes') || ''),
         updatedAt: new Date().toISOString(),
       } : task);
-      writeStoredArray(FINAL_TASKS_KEY, next);
+      await writeStoredArray(FINAL_TASKS_KEY, next);
+      changedKey = FINAL_TASKS_KEY;
     } else {
       const logs = readStoredArray(FINAL_DAILY_KEY);
       const next = logs.map((log) => log.id === item.id ? {
@@ -312,10 +319,12 @@ function openFinalEditModal(kind, item) {
         notes: String(data.get('notes') || ''),
         updatedAt: new Date().toISOString(),
       } : log);
-      writeStoredArray(FINAL_DAILY_KEY, next);
+      await writeStoredArray(FINAL_DAILY_KEY, next);
+      changedKey = FINAL_DAILY_KEY;
     }
     close();
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent('archDailyWorkDesk:localDataChanged', { detail: { key: changedKey } }));
+    window.setTimeout(runFinalFixes, 80);
   });
 
   document.body.appendChild(overlay);

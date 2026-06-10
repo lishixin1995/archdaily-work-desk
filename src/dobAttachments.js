@@ -19,7 +19,12 @@ function readStoredDobNotes() {
 }
 
 function writeStoredDobNotes(notes) {
-  localStorage.setItem(DOB_NOTES_KEY, JSON.stringify(notes));
+  const rawValue = JSON.stringify(notes);
+  localStorage.setItem(DOB_NOTES_KEY, rawValue);
+  if (typeof window.__archDailySaveCloudNow === 'function') {
+    return window.__archDailySaveCloudNow(DOB_NOTES_KEY, rawValue);
+  }
+  return Promise.resolve(false);
 }
 
 function fileToDataUrl(file) {
@@ -192,7 +197,7 @@ async function addFilesToForm(form, files) {
   setPendingAttachments(form, [...getPendingAttachments(form), ...attachments]);
 }
 
-function attachPendingFilesToLatestNote(form, snapshot) {
+async function attachPendingFilesToLatestNote(form, snapshot) {
   const attachments = getPendingAttachments(form);
   if (!attachments.length) return;
 
@@ -208,7 +213,8 @@ function attachPendingFilesToLatestNote(form, snapshot) {
 
   target.attachments = attachments;
   target.updatedAt = new Date().toISOString();
-  writeStoredDobNotes(notes);
+  await writeStoredDobNotes(notes);
+  window.dispatchEvent(new CustomEvent('archDailyWorkDesk:localDataChanged', { detail: { key: DOB_NOTES_KEY } }));
   pendingAttachmentsByForm.delete(form);
   renderPendingAttachments(form, true);
 }

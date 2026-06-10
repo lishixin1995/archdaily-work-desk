@@ -21,6 +21,30 @@ function itemIdentity(item, index) {
   return `item-${index}-${String(item)}`;
 }
 
+function itemUpdatedTime(item) {
+  return Date.parse(item?.updatedAt || item?.createdAt || 0) || 0;
+}
+
+function chooseNewestItem(existing, incoming) {
+  const existingTime = itemUpdatedTime(existing);
+  const incomingTime = itemUpdatedTime(incoming);
+
+  if (incomingTime > existingTime) return incoming;
+  if (existingTime > incomingTime) return existing;
+
+  const existingStatus = existing?.status;
+  const incomingStatus = incoming?.status;
+  if (existingStatus !== incomingStatus) {
+    if (incomingStatus === 'Done') return incoming;
+    if (existingStatus === 'Done') return existing;
+  }
+
+  if (incoming?.updatedAt && !existing?.updatedAt) return incoming;
+  if (existing?.updatedAt && !incoming?.updatedAt) return existing;
+
+  return incoming;
+}
+
 function mergeArrays(remote = [], local = []) {
   const map = new Map();
 
@@ -37,9 +61,7 @@ function mergeArrays(remote = [], local = []) {
       return;
     }
 
-    const existingTime = Date.parse(existing.updatedAt || existing.createdAt || 0) || 0;
-    const localTime = Date.parse(item.updatedAt || item.createdAt || 0) || 0;
-    map.set(key, localTime >= existingTime ? item : existing);
+    map.set(key, chooseNewestItem(existing, item));
   });
 
   return Array.from(map.values());
@@ -114,6 +136,9 @@ export async function bootCloudSync({ app, keys }) {
       window.__personalCloudSync.status = 'Cloud save failed; local cache kept until retry.';
     }
   }
+
+  window.__archDailySaveCloudNow = saveNow;
+  window.__personalSaveCloudNow = saveNow;
 
   function scheduleSave(key, rawValue) {
     if (!watchedKeys.has(key)) return;

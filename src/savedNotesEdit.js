@@ -130,7 +130,12 @@ function readSavedNotesArray(key) {
 }
 
 function writeSavedNotesArray(key, value) {
-  localStorage.setItem(key, JSON.stringify(value));
+  const rawValue = JSON.stringify(value);
+  localStorage.setItem(key, rawValue);
+  if (typeof window.__archDailySaveCloudNow === 'function') {
+    return window.__archDailySaveCloudNow(key, rawValue);
+  }
+  return Promise.resolve(false);
 }
 
 function savedNotesText(element, selector) {
@@ -224,13 +229,13 @@ function getSavedNotesEditTitle(kind) {
   return 'Edit Revit Trouble Shoot';
 }
 
-function applySavedNotesEdit(kind, item, form) {
+async function applySavedNotesEdit(kind, item, form) {
   const data = new FormData(form);
   const now = new Date().toISOString();
 
   if (kind === 'dob') {
     const notes = readSavedNotesArray(SAVED_NOTES_KEYS.dob);
-    writeSavedNotesArray(SAVED_NOTES_KEYS.dob, notes.map((note) => note.id === item.id ? {
+    await writeSavedNotesArray(SAVED_NOTES_KEYS.dob, notes.map((note) => note.id === item.id ? {
       ...note,
       date: String(data.get('date') || ''),
       category: String(data.get('category') || 'General'),
@@ -238,12 +243,12 @@ function applySavedNotesEdit(kind, item, form) {
       notes: String(data.get('notes') || ''),
       updatedAt: now,
     } : note));
-    return;
+    return SAVED_NOTES_KEYS.dob;
   }
 
   if (kind === 'prompt') {
     const prompts = readSavedNotesArray(SAVED_NOTES_KEYS.prompts);
-    writeSavedNotesArray(SAVED_NOTES_KEYS.prompts, prompts.map((prompt) => prompt.id === item.id ? {
+    await writeSavedNotesArray(SAVED_NOTES_KEYS.prompts, prompts.map((prompt) => prompt.id === item.id ? {
       ...prompt,
       category: String(data.get('category') || 'Rendering'),
       title: String(data.get('title') || '').trim(),
@@ -251,11 +256,11 @@ function applySavedNotesEdit(kind, item, form) {
       favorite: data.get('favorite') === 'on',
       updatedAt: now,
     } : prompt));
-    return;
+    return SAVED_NOTES_KEYS.prompts;
   }
 
   const logs = readSavedNotesArray(SAVED_NOTES_KEYS.revit);
-  writeSavedNotesArray(SAVED_NOTES_KEYS.revit, logs.map((log) => log.id === item.id ? {
+  await writeSavedNotesArray(SAVED_NOTES_KEYS.revit, logs.map((log) => log.id === item.id ? {
     ...log,
     date: String(data.get('date') || ''),
     category: String(data.get('category') || 'Modeling'),
@@ -264,6 +269,7 @@ function applySavedNotesEdit(kind, item, form) {
     solution: String(data.get('solution') || ''),
     updatedAt: now,
   } : log));
+  return SAVED_NOTES_KEYS.revit;
 }
 
 function openSavedNotesEditModal(kind, item) {
@@ -288,11 +294,12 @@ function openSavedNotesEditModal(kind, item) {
     if (event.target === overlay) close();
   });
   overlay.querySelector('[data-action="cancel"]').addEventListener('click', close);
-  overlay.querySelector('form').addEventListener('submit', (event) => {
+  overlay.querySelector('form').addEventListener('submit', async (event) => {
     event.preventDefault();
-    applySavedNotesEdit(kind, item, event.currentTarget);
+    const key = await applySavedNotesEdit(kind, item, event.currentTarget);
     close();
-    window.location.reload();
+    window.dispatchEvent(new CustomEvent('archDailyWorkDesk:localDataChanged', { detail: { key } }));
+    window.setTimeout(enhanceAllSavedNotesEdit, 80);
   });
 
   document.body.appendChild(overlay);
