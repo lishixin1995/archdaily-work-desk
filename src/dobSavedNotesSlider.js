@@ -10,10 +10,20 @@ function isDobNotesActive() {
 
 function getDobSavedNotesGrid() {
   if (!isDobNotesActive()) return null;
+  const markedGrid = document.querySelector('.dobSavedNotesGrid');
+  if (markedGrid?.classList?.contains('libraryGrid')) return markedGrid;
   const linkPanel = document.querySelector('.dobLinkPanel');
   const nextGrid = linkPanel?.nextElementSibling;
   if (nextGrid?.classList?.contains('libraryGrid')) return nextGrid;
   return document.querySelector('.dobLinkPanel ~ .libraryGrid');
+}
+
+function moveDobSavedNotesGrid(grid) {
+  if (!grid) return;
+  grid.classList.add('dobSavedNotesGrid');
+  const filters = document.querySelector('.libraryFilters');
+  if (!filters || filters.nextElementSibling === grid) return;
+  filters.after(grid);
 }
 
 function getDobSavedNoteCards(grid) {
@@ -83,6 +93,7 @@ function setDobSavedNotesPage(grid, requestedPage, force = false) {
 function enhanceDobSavedNotesSlider() {
   const grid = getDobSavedNotesGrid();
   if (!grid) return;
+  moveDobSavedNotesGrid(grid);
   grid.classList.add('dobSavedNotesSlider');
   const current = Number(grid.dataset.dobSavedPage || grid.dataset.dobSavedIndex || 0);
   setDobSavedNotesPage(grid, current);
@@ -100,8 +111,8 @@ function mutationTouchesSavedNotes(mutation) {
   const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
   return nodes.some((node) => {
     if (node.nodeType !== Node.ELEMENT_NODE) return false;
-    return node.matches?.('.dobLinkPanel, .libraryGrid, .libraryCard, .pageHeading, .mainNav')
-      || node.querySelector?.('.dobLinkPanel, .libraryGrid, .libraryCard, .pageHeading, .mainNav');
+    return node.matches?.('.dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav')
+      || node.querySelector?.('.dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav');
   });
 }
 
