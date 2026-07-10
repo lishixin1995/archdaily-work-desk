@@ -42,26 +42,6 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
     <>
       <PageHeading eyebrow="Revit Memory" title="Revit Trouble Shoot">Keep troubleshooting cards compact, then open the full problem and solution.</PageHeading>
       <div className="libraryFilters"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Revit troubleshooting..." /><select value={category} onChange={(e) => setCategory(e.target.value)}><option>All</option>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></div>
-      <form className="cardForm" onSubmit={addLog}>
-        <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-        <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
-        <label className="wide">Issue title<input value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} placeholder="What went wrong?" /></label>
-        <label className="wide">Problem description<textarea value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} placeholder="Describe the Revit problem..." /></label>
-        <label className="wide">Solution / notes<textarea value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} placeholder="How did you fix it?" /></label>
-        <label className="wide revitAttachmentDrop">Reference files<input type="file" multiple accept={REVIT_ATTACHMENT_ACCEPT} onChange={async (event) => { await addAttachments(event.target.files); event.target.value = ''; }} /><span>Upload multiple PDF, JPEG/JPG, PNG, or DOCX files before saving.</span></label>
-        {(form.attachments || []).length > 0 && (
-          <div className="wide revitAttachmentList">
-            {form.attachments.map((attachment) => (
-              <div key={attachment.id} className="revitAttachmentChip">
-                <span>{attachment.name || 'Attachment'}</span>
-                <small>{formatFileSize(attachment.size)}</small>
-                <button type="button" onClick={() => removeAttachment(attachment.id)}>Remove</button>
-              </div>
-            ))}
-          </div>
-        )}
-        <button type="submit" className="primary wide">Add Trouble Shoot</button>
-      </form>
       <div className="revitSavedHead">
         <div>
           <p className="eyebrow">Saved Revit Memory</p>
@@ -89,6 +69,26 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
           );
         })}
       </section>
+      <form className="cardForm" onSubmit={addLog}>
+        <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+        <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+        <label className="wide">Issue title<input value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} placeholder="What went wrong?" /></label>
+        <label className="wide">Problem description<textarea value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} placeholder="Describe the Revit problem..." /></label>
+        <label className="wide">Solution / notes<textarea value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} placeholder="How did you fix it?" /></label>
+        <label className="wide revitAttachmentDrop">Reference files<input type="file" multiple accept={REVIT_ATTACHMENT_ACCEPT} onChange={async (event) => { await addAttachments(event.target.files); event.target.value = ''; }} /><span>Upload multiple PDF, JPEG/JPG, PNG, or DOCX files before saving.</span></label>
+        {(form.attachments || []).length > 0 && (
+          <div className="wide revitAttachmentList">
+            {form.attachments.map((attachment) => (
+              <div key={attachment.id} className="revitAttachmentChip">
+                <span>{attachment.name || 'Attachment'}</span>
+                <small>{formatFileSize(attachment.size)}</small>
+                <button type="button" onClick={() => removeAttachment(attachment.id)}>Remove</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <button type="submit" className="primary wide">Add Trouble Shoot</button>
+      </form>
       {openLog && <FullNoteModal open eyebrow="Revit Trouble Shoot" title={openLog.issue || 'Untitled Issue'} meta={[["Date", niceDate(openLog.date)], ["Category", openLog.category], ["Attachments", getRevitAttachments(openLog).length ? getRevitAttachments(openLog).length + ' saved' : '-']]} sections={[["Problem description", openLog.problem], ["Solution / notes", openLog.solution]]} images={getRevitImageAttachments(openLog)} attachments={getRevitFileAttachments(openLog)} copyText={[openLog.issue || '', '', openLog.problem || '', '', openLog.solution || ''].join(String.fromCharCode(10))} onClose={() => setOpenLog(null)} />}
     </>
   );
