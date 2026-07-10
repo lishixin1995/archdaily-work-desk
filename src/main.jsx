@@ -953,14 +953,10 @@ function RevitTroubleShoot({ revitLogs, setRevitLogs }) {
     <>
       <PageHeading eyebrow="Revit Memory" title="Revit Trouble Shoot">Keep troubleshooting cards compact, then open the full problem and solution.</PageHeading>
       <div className="libraryFilters"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Revit troubleshooting..." /><select value={category} onChange={(e) => setCategory(e.target.value)}><option>All</option>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></div>
-      <form className="cardForm" onSubmit={addLog}>
-        <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
-        <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
-        <label className="wide">Issue title<input value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} placeholder="What went wrong?" /></label>
-        <label className="wide">Problem description<textarea value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} placeholder="Describe the Revit problem..." /></label>
-        <label className="wide">Solution / notes<textarea value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} placeholder="How did you fix it?" /></label>
-        <button type="submit" className="primary wide">Add Trouble Shoot</button>
-      </form>
+      <section className="savedMemoryHeader">
+        <p className="eyebrow">Saved Revit Memory</p>
+        <h2>Trouble Shoot Cards</h2>
+      </section>
       <section className="libraryGrid">
         {filtered.length === 0 ? <div className="empty wideEmpty">No Revit troubleshooting notes yet.</div> : filtered.map((log) => (
           <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
@@ -974,6 +970,14 @@ function RevitTroubleShoot({ revitLogs, setRevitLogs }) {
           </article>
         ))}
       </section>
+      <form className="cardForm" onSubmit={addLog}>
+        <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
+        <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+        <label className="wide">Issue title<input value={form.issue} onChange={(e) => setForm({ ...form, issue: e.target.value })} placeholder="What went wrong?" /></label>
+        <label className="wide">Problem description<textarea value={form.problem} onChange={(e) => setForm({ ...form, problem: e.target.value })} placeholder="Describe the Revit problem..." /></label>
+        <label className="wide">Solution / notes<textarea value={form.solution} onChange={(e) => setForm({ ...form, solution: e.target.value })} placeholder="How did you fix it?" /></label>
+        <button type="submit" className="primary wide">Add Trouble Shoot</button>
+      </form>
       {openLog && <FullNoteModal open eyebrow="Revit Trouble Shoot" title={openLog.issue || 'Untitled Issue'} meta={[["Date", niceDate(openLog.date)], ["Category", openLog.category]]} sections={[["Problem description", openLog.problem], ["Solution / notes", openLog.solution]]} copyText={`${openLog.issue || ''}\n\n${openLog.problem || ''}\n\n${openLog.solution || ''}`} onClose={() => setOpenLog(null)} />}
     </>
   );

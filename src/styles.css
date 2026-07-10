@@ -119,6 +119,20 @@ button { cursor: pointer; }
 }
 .pageHeading p { margin: 10px 0 0; color: var(--muted); font-size: 17px; }
 
+.savedMemoryHeader {
+  margin: 22px 0 12px;
+}
+
+.savedMemoryHeader h2 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.savedMemoryHeader + .libraryGrid {
+  margin-bottom: 22px;
+}
+
 .cardForm,
 .filterCard,
 .calendarPanel,
