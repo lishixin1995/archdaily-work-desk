@@ -869,7 +869,7 @@ function LinkLibrary() {
                       <div className="dobLinkMeta">
                         <span>{category}</span>
                         <button type="button" onClick={() => startEditLink(link)}>Edit</button>
-                        <button type="button" aria-label={`Delete ${link.title}`} onClick={() => deleteLink(link.id)}>X</button>
+                        <button type="button" className="linkDeleteButton" aria-label={`Delete ${link.title}`} onClick={() => deleteLink(link.id)}>Del</button>
                       </div>
                     </div>
                   );
