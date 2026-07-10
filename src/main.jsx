@@ -611,6 +611,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [openNote, setOpenNote] = useState(null);
+  const [editingNoteId, setEditingNoteId] = useState(null);
   const filtered = dobNotes.filter((note) => matchesQuery(note, search) && (category === 'All' || note.category === category));
 
   async function handleScreenshotFiles(files) {
@@ -620,12 +621,44 @@ function DobNotes({ dobNotes, setDobNotes }) {
     if (screenshot) setForm((current) => ({ ...current, screenshot }));
   }
 
-  function addNote(event) {
+  function resetDobNoteForm(nextCategory = form.category) {
+    setEditingNoteId(null);
+    setForm({ date: todayISO(), category: nextCategory || 'General', title: '', notes: '', screenshot: null });
+  }
+
+  function startEditDobNote(note) {
+    setEditingNoteId(note.id);
+    setOpenNote(null);
+    setForm({
+      date: note.date || todayISO(),
+      category: note.category || 'General',
+      title: note.title || '',
+      notes: note.notes || '',
+      screenshot: note.screenshot || null,
+    });
+    window.setTimeout(() => {
+      document.querySelector('[data-dob-note-form]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }
+
+  function saveNote(event) {
     event.preventDefault();
-    if (!form.title.trim() && !form.notes.trim()) return;
+    if (!form.title.trim() && !form.notes.trim() && !form.screenshot) return;
     const now = nowTimestamp();
-    setDobNotes([{ ...form, id: uid(), createdAt: now, updatedAt: now }, ...dobNotes]);
-    setForm({ date: todayISO(), category: form.category, title: '', notes: '', screenshot: null });
+    const nextForm = { ...form, title: form.title.trim(), updatedAt: now };
+
+    if (editingNoteId) {
+      setDobNotes(dobNotes.map((note) => note.id === editingNoteId ? { ...note, ...nextForm } : note));
+    } else {
+      setDobNotes([{ ...nextForm, id: uid(), createdAt: now }, ...dobNotes]);
+    }
+
+    resetDobNoteForm(form.category);
+  }
+
+  function deleteDobNote(id) {
+    setDobNotes(dobNotes.filter((note) => note.id !== id));
+    if (editingNoteId === id) resetDobNoteForm();
   }
 
   function addDobLink(event) {
@@ -645,7 +678,13 @@ function DobNotes({ dobNotes, setDobNotes }) {
     <>
       <PageHeading eyebrow="Code / DOB Memory" title="DOB Notes">Compact cards with full-note modal for long code notes.</PageHeading>
       <div className="libraryFilters"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search DOB notes..." /><select value={category} onChange={(e) => setCategory(e.target.value)}><option>All</option>{DOB_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></div>
-      <form className="cardForm" onSubmit={addNote}>
+      <form className="cardForm" onSubmit={saveNote} data-dob-note-form>
+        {editingNoteId && (
+          <div className="wide editFormNotice">
+            <strong>Editing saved DOB note</strong>
+            <button type="button" onClick={() => resetDobNoteForm()}>Cancel edit</button>
+          </div>
+        )}
         <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
         <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{DOB_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
         <label className="wide">Title<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Code / DOB quick note title" /></label>
@@ -671,7 +710,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
             </div>
           )}
         </label>
-        <button type="submit" className="primary wide">Add DOB Note</button>
+        <button type="submit" className="primary wide">{editingNoteId ? 'Save DOB Note Changes' : 'Add DOB Note'}</button>
       </form>
 
       <section className="dobLinkPanel">
@@ -719,7 +758,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
         </div>
       </section>
 
-      <NoteCards items={filtered} kind="DOB Notes" onOpen={setOpenNote} onDelete={(id) => setDobNotes(dobNotes.filter((note) => note.id !== id))} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
+      <NoteCards items={filtered} kind="DOB Notes" onOpen={setOpenNote} onEdit={startEditDobNote} onDelete={deleteDobNote} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
       {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
     </>
   );
@@ -821,7 +860,7 @@ function RevitTroubleShoot({ revitLogs, setRevitLogs }) {
   );
 }
 
-function NoteCards({ items, kind, onOpen, onDelete, getTitle, getBody }) {
+function NoteCards({ items, kind, onOpen, onDelete, onEdit, getTitle, getBody }) {
   return (
     <section className="libraryGrid">
       {items.length === 0 ? <div className="empty wideEmpty">No saved items yet.</div> : items.map((item) => (
@@ -831,6 +870,7 @@ function NoteCards({ items, kind, onOpen, onDelete, getTitle, getBody }) {
           <p className="clampedText">{getBody(item)}</p>
           <div className="cardActions" onClick={(event) => event.stopPropagation()}>
             <button type="button" onClick={() => onOpen(item)}>View full notes</button>
+            {onEdit && <button type="button" className="savedNotesEditButton" onClick={() => onEdit(item)}>Edit</button>}
             <button type="button" className="danger" onClick={() => onDelete(item.id)}>Delete</button>
           </div>
         </article>

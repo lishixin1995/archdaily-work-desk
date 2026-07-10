@@ -148,6 +148,28 @@ button { cursor: pointer; }
   font-weight: 850;
 }
 .cardForm .wide { grid-column: 1 / -1; }
+.editFormNotice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(95, 127, 115, .28);
+  border-radius: 16px;
+  background: rgba(95, 127, 115, .10);
+  padding: 12px 14px;
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 900;
+}
+.editFormNotice button {
+  width: auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .82);
+  color: var(--warmDark);
+  padding: 8px 12px;
+  font-weight: 850;
+}
 .cardForm input,
 .cardForm textarea,
 .cardForm select,
