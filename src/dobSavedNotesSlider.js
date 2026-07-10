@@ -10,6 +10,8 @@ function isDobNotesActive() {
 
 function getDobSavedNotesGrid() {
   if (!isDobNotesActive()) return null;
+  const dobNotesGrid = document.querySelector('.dobNotesSavedGrid');
+  if (dobNotesGrid?.classList?.contains('libraryGrid')) return dobNotesGrid;
   const markedGrid = document.querySelector('.dobSavedNotesGrid');
   if (markedGrid?.classList?.contains('libraryGrid')) return markedGrid;
   const linkPanel = document.querySelector('.dobLinkPanel');
@@ -111,8 +113,8 @@ function mutationTouchesSavedNotes(mutation) {
   const nodes = [...mutation.addedNodes, ...mutation.removedNodes];
   return nodes.some((node) => {
     if (node.nodeType !== Node.ELEMENT_NODE) return false;
-    return node.matches?.('.dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav')
-      || node.querySelector?.('.dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav');
+    return node.matches?.('.dobNotesSavedGrid, .dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav')
+      || node.querySelector?.('.dobNotesSavedGrid, .dobSavedNotesGrid, .dobLinkPanel, .cardForm, .libraryFilters, .libraryGrid, .libraryCard, .pageHeading, .mainNav');
   });
 }
 

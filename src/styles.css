@@ -975,3 +975,122 @@ textarea { min-height: 122px; resize: vertical; }
   color: var(--warm);
   line-height: 1;
 }
+
+.linkLibraryForm {
+  grid-template-columns: minmax(180px, 1fr) minmax(260px, 1.45fr) 180px auto;
+  align-items: end;
+}
+
+.linkLibraryForm .linkUrlField {
+  min-width: 0;
+}
+
+.linkCategoryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.linkCategoryCard {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: rgba(255, 250, 243, .76);
+  box-shadow: var(--shadow);
+  padding: 18px;
+  min-width: 0;
+}
+
+.linkCategoryHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.linkCategoryHead h3 {
+  margin: 0;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.linkPageControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.linkPageControls button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255,255,255,.78);
+  color: var(--warmDark);
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.linkPageControls button:disabled {
+  opacity: .42;
+  cursor: default;
+}
+
+.linkPageControls span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.linkCategoryButtons {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.linkCategoryButtons .empty {
+  grid-column: 1 / -1;
+}
+
+.linkLibraryChip {
+  min-height: 156px;
+}
+
+.linkLibraryChip .dobLinkMeta {
+  flex-wrap: wrap;
+}
+
+.linkLibraryChip .dobLinkMeta button {
+  width: auto;
+  min-width: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+@media (max-width: 1450px) {
+  .linkCategoryButtons {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 1100px) {
+  .linkLibraryForm,
+  .linkCategoryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .linkCategoryHead {
+    flex-direction: column;
+  }
+
+  .linkPageControls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .linkCategoryButtons {
+    grid-template-columns: 1fr;
+  }
+}

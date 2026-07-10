@@ -20,11 +20,12 @@ const LEGACY_KEYS = {
   revit: ['archDailyWorkDesk.revitTroubleShoot', 'revitTroubleShoot'],
 };
 
-const TABS = ['Dashboard', 'Daily Task Log', 'DOB Notes', 'AI Prompt Library', 'Revit Trouble Shoot'];
+const TABS = ['Dashboard', 'Daily Task Log', 'DOB Notes', 'Links', 'AI Prompt Library', 'Revit Trouble Shoot'];
 const STATUS_COLUMNS = ['Not Started', 'In Progress', 'Waiting', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const FOCUS_COLUMNS = ['Urgent', 'High', 'In Progress', 'Waiting', 'Planned'];
 const DOB_CATEGORIES = ['General', 'Zoning', 'Code', 'DOB', 'BPP', 'Accessibility', 'Energy'];
+const LINK_CATEGORIES = ['Code', 'Zoning', 'General', 'Info'];
 const PROMPT_CATEGORIES = ['Rendering', 'Video', 'Writing', 'Code', 'DOB', 'Revit', 'Other'];
 const REVIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];
 
@@ -193,6 +194,15 @@ function getLinkInitial(link) {
 function getFaviconUrl(url) {
   const host = getLinkHost(url);
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+}
+
+function normalizeLinkCategory(value) {
+  const category = String(value || '').toLowerCase();
+  if (category.includes('zoning')) return 'Zoning';
+  if (category.includes('general')) return 'General';
+  if (category.includes('info') || category.includes('accessibility') || category.includes('energy') || category.includes('bpp')) return 'Info';
+  if (category.includes('code') || category.includes('dob')) return 'Code';
+  return 'General';
 }
 
 function matchesQuery(item, query) {
@@ -440,6 +450,7 @@ function App() {
           {activeTab === 'Dashboard' && <TaskDashboard tasks={tasks} setTasks={setTasks} onOpenTask={setOpenTask} />}
           {activeTab === 'Daily Task Log' && <DailyTaskLog dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} />}
           {activeTab === 'DOB Notes' && <DobNotes dobNotes={dobNotes} setDobNotes={setDobNotes} />}
+          {activeTab === 'Links' && <LinkLibrary />}
           {activeTab === 'AI Prompt Library' && <PromptLibrary prompts={prompts} setPrompts={setPrompts} />}
           {activeTab === 'Revit Trouble Shoot' && <RevitTroubleShoot revitLogs={revitLogs} setRevitLogs={setRevitLogs} />}
         </section>
@@ -606,8 +617,6 @@ function DailyTaskLog({ dailyLogs, setDailyLogs }) {
 
 function DobNotes({ dobNotes, setDobNotes }) {
   const [form, setForm] = useState({ date: todayISO(), category: 'General', title: '', notes: '', screenshot: null });
-  const [linkForm, setLinkForm] = useState({ title: '', url: '', category: 'Code' });
-  const [dobLinks, setDobLinks] = useStoredArray(STORAGE_KEYS.dobLinks, LEGACY_KEYS.dobLinks);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [openNote, setOpenNote] = useState(null);
@@ -661,19 +670,6 @@ function DobNotes({ dobNotes, setDobNotes }) {
     if (editingNoteId === id) resetDobNoteForm();
   }
 
-  function addDobLink(event) {
-    event.preventDefault();
-    const url = normalizeUrl(linkForm.url);
-    if (!linkForm.title.trim() || !url) return;
-    const now = nowTimestamp();
-    setDobLinks([{ ...linkForm, title: linkForm.title.trim(), url, id: uid(), createdAt: now, updatedAt: now }, ...dobLinks]);
-    setLinkForm({ title: '', url: '', category: linkForm.category });
-  }
-
-  function deleteDobLink(id) {
-    setDobLinks(dobLinks.filter((link) => link.id !== id));
-  }
-
   return (
     <>
       <PageHeading eyebrow="Code / DOB Memory" title="DOB Notes">Compact cards with full-note modal for long code notes.</PageHeading>
@@ -713,6 +709,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
         <button type="submit" className="primary wide">{editingNoteId ? 'Save DOB Note Changes' : 'Add DOB Note'}</button>
       </form>
 
+      {false && (
       <section className="dobLinkPanel">
         <div className="dobLinkHead">
           <div>
@@ -757,9 +754,131 @@ function DobNotes({ dobNotes, setDobNotes }) {
           })}
         </div>
       </section>
+      )}
 
-      <NoteCards items={filtered} kind="DOB Notes" onOpen={setOpenNote} onEdit={startEditDobNote} onDelete={deleteDobNote} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
+      <NoteCards className="dobNotesSavedGrid" items={filtered} kind="DOB Notes" onOpen={setOpenNote} onEdit={startEditDobNote} onDelete={deleteDobNote} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
       {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
+    </>
+  );
+}
+
+function LinkLibrary() {
+  const [linkForm, setLinkForm] = useState({ title: '', url: '', category: 'Code' });
+  const [dobLinks, setDobLinks] = useStoredArray(STORAGE_KEYS.dobLinks, LEGACY_KEYS.dobLinks);
+  const [editingLinkId, setEditingLinkId] = useState(null);
+  const [linkPages, setLinkPages] = useState({});
+  const pageSize = 4;
+
+  function resetLinkForm(nextCategory = linkForm.category) {
+    setEditingLinkId(null);
+    setLinkForm({ title: '', url: '', category: nextCategory || 'Code' });
+  }
+
+  function saveLink(event) {
+    event.preventDefault();
+    const url = normalizeUrl(linkForm.url);
+    const title = linkForm.title.trim();
+    if (!title || !url) return;
+    const category = normalizeLinkCategory(linkForm.category);
+    const now = nowTimestamp();
+
+    if (editingLinkId) {
+      setDobLinks(dobLinks.map((link) => link.id === editingLinkId ? { ...link, title, url, category, updatedAt: now } : link));
+    } else {
+      setDobLinks([{ title, url, category, id: uid(), createdAt: now, updatedAt: now }, ...dobLinks]);
+    }
+
+    setLinkPages((current) => ({ ...current, [category]: 0 }));
+    resetLinkForm(category);
+  }
+
+  function startEditLink(link) {
+    const category = normalizeLinkCategory(link.category);
+    setEditingLinkId(link.id);
+    setLinkForm({ title: link.title || '', url: link.url || '', category });
+    window.setTimeout(() => {
+      document.querySelector('[data-link-form]')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 0);
+  }
+
+  function deleteLink(id) {
+    setDobLinks(dobLinks.filter((link) => link.id !== id));
+    if (editingLinkId === id) resetLinkForm();
+  }
+
+  function changeLinkPage(category, amount, pageCount) {
+    setLinkPages((current) => {
+      const currentPage = current[category] || 0;
+      const nextPage = Math.min(Math.max(currentPage + amount, 0), Math.max(0, pageCount - 1));
+      return { ...current, [category]: nextPage };
+    });
+  }
+
+  return (
+    <>
+      <PageHeading eyebrow="Quick Access" title="Links">DOB, code, zoning, general, and info links.</PageHeading>
+
+      <form className="cardForm linkLibraryForm" onSubmit={saveLink} data-link-form>
+        {editingLinkId && (
+          <div className="wide editFormNotice">
+            <strong>Editing saved link</strong>
+            <button type="button" onClick={() => resetLinkForm()}>Cancel edit</button>
+          </div>
+        )}
+        <label>Button name<input value={linkForm.title} onChange={(e) => setLinkForm({ ...linkForm, title: e.target.value })} placeholder="DOB BIS / Zoning Text" /></label>
+        <label className="linkUrlField">URL<input value={linkForm.url} onChange={(e) => setLinkForm({ ...linkForm, url: e.target.value })} placeholder="Paste link" /></label>
+        <label>Category<select value={linkForm.category} onChange={(e) => setLinkForm({ ...linkForm, category: e.target.value })}>{LINK_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+        <button type="submit" className="primary">{editingLinkId ? 'Save Link Changes' : 'Add Link'}</button>
+      </form>
+
+      <section className="linkCategoryGrid">
+        {LINK_CATEGORIES.map((category) => {
+          const links = dobLinks.filter((link) => normalizeLinkCategory(link.category) === category);
+          const pageCount = Math.max(1, Math.ceil(links.length / pageSize));
+          const currentPage = Math.min(linkPages[category] || 0, pageCount - 1);
+          const visibleLinks = links.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+
+          return (
+            <article key={category} className="linkCategoryCard">
+              <div className="linkCategoryHead">
+                <div>
+                  <p className="eyebrow">{category.toUpperCase()}</p>
+                  <h3>{category}</h3>
+                </div>
+                <div className="linkPageControls">
+                  <button type="button" onClick={() => changeLinkPage(category, -1, pageCount)} disabled={currentPage <= 0}>Prev</button>
+                  <span>{links.length ? currentPage + 1 : 0} / {links.length ? pageCount : 0}</span>
+                  <button type="button" onClick={() => changeLinkPage(category, 1, pageCount)} disabled={!links.length || currentPage + 1 >= pageCount}>Next</button>
+                </div>
+              </div>
+
+              <div className="dobLinkButtons linkCategoryButtons">
+                {visibleLinks.length === 0 ? (
+                  <div className="empty compact">No links yet.</div>
+                ) : visibleLinks.map((link) => {
+                  const faviconUrl = getFaviconUrl(link.url);
+                  return (
+                    <div key={link.id} className="dobLinkChip linkLibraryChip">
+                      <a href={link.url} target="_blank" rel="noreferrer" aria-label={`Open ${link.title}`}>
+                        <span className="dobLinkLogo">
+                          {faviconUrl ? <img src={faviconUrl} alt="" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : null}
+                          <span>{getLinkInitial(link)}</span>
+                        </span>
+                        <strong>{link.title}</strong>
+                      </a>
+                      <div className="dobLinkMeta">
+                        <span>{category}</span>
+                        <button type="button" onClick={() => startEditLink(link)}>Edit</button>
+                        <button type="button" aria-label={`Delete ${link.title}`} onClick={() => deleteLink(link.id)}>X</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </article>
+          );
+        })}
+      </section>
     </>
   );
 }
@@ -860,9 +979,9 @@ function RevitTroubleShoot({ revitLogs, setRevitLogs }) {
   );
 }
 
-function NoteCards({ items, kind, onOpen, onDelete, onEdit, getTitle, getBody }) {
+function NoteCards({ items, kind, onOpen, onDelete, onEdit, getTitle, getBody, className = '' }) {
   return (
-    <section className="libraryGrid">
+    <section className={`libraryGrid ${className}`.trim()}>
       {items.length === 0 ? <div className="empty wideEmpty">No saved items yet.</div> : items.map((item) => (
         <article key={item.id} className="libraryCard" onClick={() => onOpen(item)}>
           <p className="eyebrow">{item.category || kind}{item.screenshot ? ' · Screenshot' : ''}</p>
