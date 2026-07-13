@@ -200,6 +200,9 @@ function buildSavedNotesEditFields(kind, item) {
     return `
       <label>Date<input type="date" name="date" value="${escapeSavedNotesHtml(savedNotesDateValue(item.date))}"></label>
       <label>Category<select name="category">${savedNotesOptions(DOB_EDIT_CATEGORIES, item.category || 'General')}</select></label>
+      <label>Year<input name="year" value="${escapeSavedNotesHtml(item.year)}" placeholder="e.g. 2022"></label>
+      <label>Code<input name="code" value="${escapeSavedNotesHtml(item.code)}" placeholder="e.g. NYC Building Code"></label>
+      <label>Chapter<input name="chapter" value="${escapeSavedNotesHtml(item.chapter)}" placeholder="e.g. Chapter 3 / 310.3"></label>
       <label class="wide">Title<input name="title" value="${escapeSavedNotesHtml(item.title)}"></label>
       <label class="wide">Full note<textarea name="notes">${escapeSavedNotesHtml(item.notes)}</textarea></label>
     `;
@@ -239,6 +242,9 @@ async function applySavedNotesEdit(kind, item, form) {
       ...note,
       date: String(data.get('date') || ''),
       category: String(data.get('category') || 'General'),
+      year: String(data.get('year') || '').trim(),
+      code: String(data.get('code') || '').trim(),
+      chapter: String(data.get('chapter') || '').trim(),
       title: String(data.get('title') || '').trim(),
       notes: String(data.get('notes') || ''),
       updatedAt: now,

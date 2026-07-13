@@ -616,7 +616,7 @@ function DailyTaskLog({ dailyLogs, setDailyLogs }) {
 }
 
 function DobNotes({ dobNotes, setDobNotes }) {
-  const [form, setForm] = useState({ date: todayISO(), category: 'General', title: '', notes: '', screenshot: null });
+  const [form, setForm] = useState({ date: todayISO(), category: 'General', year: '', code: '', chapter: '', title: '', notes: '', screenshot: null });
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
   const [openNote, setOpenNote] = useState(null);
@@ -632,7 +632,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
 
   function resetDobNoteForm(nextCategory = form.category) {
     setEditingNoteId(null);
-    setForm({ date: todayISO(), category: nextCategory || 'General', title: '', notes: '', screenshot: null });
+    setForm({ date: todayISO(), category: nextCategory || 'General', year: '', code: '', chapter: '', title: '', notes: '', screenshot: null });
   }
 
   function startEditDobNote(note) {
@@ -641,6 +641,9 @@ function DobNotes({ dobNotes, setDobNotes }) {
     setForm({
       date: note.date || todayISO(),
       category: note.category || 'General',
+      year: note.year || '',
+      code: note.code || '',
+      chapter: note.chapter || '',
       title: note.title || '',
       notes: note.notes || '',
       screenshot: note.screenshot || null,
@@ -654,7 +657,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
     event.preventDefault();
     if (!form.title.trim() && !form.notes.trim() && !form.screenshot) return;
     const now = nowTimestamp();
-    const nextForm = { ...form, title: form.title.trim(), updatedAt: now };
+    const nextForm = { ...form, year: form.year.trim(), code: form.code.trim(), chapter: form.chapter.trim(), title: form.title.trim(), updatedAt: now };
 
     if (editingNoteId) {
       setDobNotes(dobNotes.map((note) => note.id === editingNoteId ? { ...note, ...nextForm } : note));
@@ -683,6 +686,9 @@ function DobNotes({ dobNotes, setDobNotes }) {
         )}
         <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} /></label>
         <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{DOB_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></label>
+        <label>Year<input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} placeholder="e.g. 2022" /></label>
+        <label>Code<input value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="e.g. NYC Building Code" /></label>
+        <label>Chapter<input value={form.chapter} onChange={(e) => setForm({ ...form, chapter: e.target.value })} placeholder="e.g. Chapter 3 / 310.3" /></label>
         <label className="wide">Title<input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Code / DOB quick note title" /></label>
         <label className="wide">Full note<textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Write the complete DOB/code note here..." /></label>
         <label
@@ -757,7 +763,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
       )}
 
       <NoteCards className="dobNotesSavedGrid" items={filtered} kind="DOB Notes" onOpen={setOpenNote} onEdit={startEditDobNote} onDelete={deleteDobNote} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
-      {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
+      {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Year", openNote.year || '—'], ["Code", openNote.code || '—'], ["Chapter", openNote.chapter || '—'], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
     </>
   );
 }
