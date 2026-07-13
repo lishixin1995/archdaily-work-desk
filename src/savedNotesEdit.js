@@ -4,9 +4,22 @@ const SAVED_NOTES_KEYS = {
   prompts: 'archDailyWorkDesk.aiPromptLibrary.v2',
   revit: 'archDailyWorkDesk.revitTroubleShoot.v2',
 };
-const DOB_EDIT_CATEGORIES = ['General', 'Zoning', 'Code', 'DOB', 'BPP', 'Accessibility', 'Energy'];
+const DOB_EDIT_CATEGORIES = ['General', 'Zoning', 'Code', 'Plumbing Code', 'Energy Code', 'Building Code', 'ADA'];
 const PROMPT_EDIT_CATEGORIES = ['Rendering', 'Video', 'Writing', 'Code', 'DOB', 'Revit', 'Other'];
 const REVIT_EDIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];
+
+function normalizeDobEditCategory(value) {
+  const category = String(value || '').trim();
+  if (DOB_EDIT_CATEGORIES.includes(category)) return category;
+  const lower = category.toLowerCase();
+  if (lower.includes('access') || lower.includes('ada')) return 'ADA';
+  if (lower.includes('energy')) return 'Energy Code';
+  if (lower.includes('plumb')) return 'Plumbing Code';
+  if (lower.includes('build')) return 'Building Code';
+  if (lower.includes('zoning')) return 'Zoning';
+  if (lower.includes('code') || lower === 'dob') return 'Code';
+  return 'General';
+}
 
 function installSavedNotesEditStyles() {
   if (document.getElementById(SAVED_NOTES_EDIT_STYLE_ID)) return;
@@ -199,7 +212,7 @@ function buildSavedNotesEditFields(kind, item) {
   if (kind === 'dob') {
     return `
       <label>Date<input type="date" name="date" value="${escapeSavedNotesHtml(savedNotesDateValue(item.date))}"></label>
-      <label>Category<select name="category">${savedNotesOptions(DOB_EDIT_CATEGORIES, item.category || 'General')}</select></label>
+      <label>Category<select name="category">${savedNotesOptions(DOB_EDIT_CATEGORIES, normalizeDobEditCategory(item.category))}</select></label>
       <label>Year<input name="year" value="${escapeSavedNotesHtml(item.year)}" placeholder="e.g. 2022"></label>
       <label>Code<input name="code" value="${escapeSavedNotesHtml(item.code)}" placeholder="e.g. NYC Building Code"></label>
       <label>Chapter<input name="chapter" value="${escapeSavedNotesHtml(item.chapter)}" placeholder="e.g. Chapter 3 / 310.3"></label>

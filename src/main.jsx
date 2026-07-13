@@ -24,7 +24,7 @@ const TABS = ['Dashboard', 'Daily Task Log', 'DOB Notes', 'Links', 'AI Prompt Li
 const STATUS_COLUMNS = ['Not Started', 'In Progress', 'Waiting', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const FOCUS_COLUMNS = ['Urgent', 'High', 'In Progress', 'Waiting', 'Planned'];
-const DOB_CATEGORIES = ['General', 'Zoning', 'Code', 'DOB', 'BPP', 'Accessibility', 'Energy'];
+const DOB_CATEGORIES = ['General', 'Zoning', 'Code', 'Plumbing Code', 'Energy Code', 'Building Code', 'ADA'];
 const LINK_CATEGORIES = ['Code', 'Zoning', 'General', 'Info'];
 const PROMPT_CATEGORIES = ['Rendering', 'Video', 'Writing', 'Code', 'DOB', 'Revit', 'Other'];
 const REVIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];
@@ -169,6 +169,19 @@ function niceDate(value) {
 
 function normalize(value) {
   return String(value || '').toLowerCase().trim();
+}
+
+function normalizeDobCategory(value) {
+  const category = String(value || '').trim();
+  if (DOB_CATEGORIES.includes(category)) return category;
+  const lower = category.toLowerCase();
+  if (lower.includes('access') || lower.includes('ada')) return 'ADA';
+  if (lower.includes('energy')) return 'Energy Code';
+  if (lower.includes('plumb')) return 'Plumbing Code';
+  if (lower.includes('build')) return 'Building Code';
+  if (lower.includes('zoning')) return 'Zoning';
+  if (lower.includes('code') || lower === 'dob') return 'Code';
+  return 'General';
 }
 
 function normalizeUrl(value) {
@@ -632,7 +645,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
 
   function resetDobNoteForm(nextCategory = form.category) {
     setEditingNoteId(null);
-    setForm({ date: todayISO(), category: nextCategory || 'General', year: '', code: '', chapter: '', title: '', notes: '', screenshot: null });
+    setForm({ date: todayISO(), category: normalizeDobCategory(nextCategory), year: '', code: '', chapter: '', title: '', notes: '', screenshot: null });
   }
 
   function startEditDobNote(note) {
@@ -640,7 +653,7 @@ function DobNotes({ dobNotes, setDobNotes }) {
     setOpenNote(null);
     setForm({
       date: note.date || todayISO(),
-      category: note.category || 'General',
+      category: normalizeDobCategory(note.category),
       year: note.year || '',
       code: note.code || '',
       chapter: note.chapter || '',
