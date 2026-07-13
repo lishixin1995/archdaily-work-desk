@@ -25,6 +25,7 @@ const STATUS_COLUMNS = ['Not Started', 'In Progress', 'Waiting', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const FOCUS_COLUMNS = ['Urgent', 'High', 'In Progress', 'Waiting', 'Planned'];
 const DOB_CATEGORIES = ['General', 'Zoning', 'Code', 'Plumbing Code', 'Energy Code', 'Building Code', 'ADA'];
+const DOB_NOTES_PAGE_SIZE = 2;
 const LINK_CATEGORIES = ['Code', 'Zoning', 'General', 'Info'];
 const PROMPT_CATEGORIES = ['Rendering', 'Video', 'Writing', 'Code', 'DOB', 'Revit', 'Other'];
 const REVIT_CATEGORIES = ['Modeling', 'Family', 'View', 'Schedule', 'Link', 'Worksharing', 'Error', 'Other'];
@@ -634,7 +635,12 @@ function DobNotes({ dobNotes, setDobNotes }) {
   const [category, setCategory] = useState('All');
   const [openNote, setOpenNote] = useState(null);
   const [editingNoteId, setEditingNoteId] = useState(null);
-  const filtered = dobNotes.filter((note) => matchesQuery(note, search) && (category === 'All' || note.category === category));
+  const [dobCategoryPages, setDobCategoryPages] = useState({});
+  const filtered = dobNotes.filter((note) => matchesQuery(note, search) && (category === 'All' || normalizeDobCategory(note.category) === category));
+
+  useEffect(() => {
+    setDobCategoryPages({});
+  }, [search, category, dobNotes.length]);
 
   async function handleScreenshotFiles(files) {
     const file = Array.from(files || []).find((item) => item.type?.startsWith('image/'));
@@ -690,6 +696,14 @@ function DobNotes({ dobNotes, setDobNotes }) {
     <>
       <PageHeading eyebrow="Code / DOB Memory" title="DOB Notes">Compact cards with full-note modal for long code notes.</PageHeading>
       <div className="libraryFilters"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search DOB notes..." /><select value={category} onChange={(e) => setCategory(e.target.value)}><option>All</option>{DOB_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></div>
+      <DobNoteCategorySections
+        items={filtered}
+        pages={dobCategoryPages}
+        setPages={setDobCategoryPages}
+        onOpen={setOpenNote}
+        onEdit={startEditDobNote}
+        onDelete={deleteDobNote}
+      />
       <form className="cardForm" onSubmit={saveNote} data-dob-note-form>
         {editingNoteId && (
           <div className="wide editFormNotice">
@@ -775,9 +789,63 @@ function DobNotes({ dobNotes, setDobNotes }) {
       </section>
       )}
 
-      <NoteCards className="dobNotesSavedGrid" items={filtered} kind="DOB Notes" onOpen={setOpenNote} onEdit={startEditDobNote} onDelete={deleteDobNote} getTitle={(item) => item.title || item.category || 'DOB Note'} getBody={(item) => item.notes} />
       {openNote && <FullNoteModal open eyebrow="DOB Notes" title={openNote.title || 'DOB Note'} meta={[["Date", niceDate(openNote.date)], ["Category", openNote.category], ["Year", openNote.year || '—'], ["Code", openNote.code || '—'], ["Chapter", openNote.chapter || '—'], ["Screenshot", openNote.screenshot ? 'Attached' : '—']]} sections={[["Full DOB note", openNote.notes]]} images={openNote.screenshot ? [openNote.screenshot] : []} copyText={openNote.notes || ''} onClose={() => setOpenNote(null)} />}
     </>
+  );
+}
+
+function DobNoteCategorySections({ items, pages, setPages, onOpen, onEdit, onDelete }) {
+  const groups = DOB_CATEGORIES
+    .map((category) => ({
+      category,
+      items: items.filter((item) => normalizeDobCategory(item.category) === category),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  function changePage(category, page) {
+    setPages((current) => ({ ...current, [category]: page }));
+  }
+
+  if (!items.length) return <section className="dobNotesGroupedSaved"><div className="empty wideEmpty">No saved items yet.</div></section>;
+
+  return (
+    <section className="dobNotesGroupedSaved">
+      {groups.map((group) => {
+        const totalPages = Math.max(1, Math.ceil(group.items.length / DOB_NOTES_PAGE_SIZE));
+        const currentPage = Math.min(Math.max(pages[group.category] || 0, 0), totalPages - 1);
+        const pageItems = group.items.slice(currentPage * DOB_NOTES_PAGE_SIZE, currentPage * DOB_NOTES_PAGE_SIZE + DOB_NOTES_PAGE_SIZE);
+
+        return (
+          <section key={group.category} className="dobCategorySection">
+            <div className="dobCategoryHead">
+              <div>
+                <p className="eyebrow">Saved DOB Notes</p>
+                <h3>{group.category}</h3>
+              </div>
+              <div className="dobCategoryPager">
+                <button type="button" aria-label={`Previous ${group.category} notes page`} onClick={() => changePage(group.category, Math.max(0, currentPage - 1))} disabled={currentPage <= 0}>&lt;</button>
+                <span>{currentPage + 1} / {totalPages}</span>
+                <button type="button" aria-label={`Next ${group.category} notes page`} onClick={() => changePage(group.category, Math.min(totalPages - 1, currentPage + 1))} disabled={currentPage + 1 >= totalPages}>&gt;</button>
+              </div>
+            </div>
+            <section className="libraryGrid dobCategoryCards">
+              {pageItems.map((item) => (
+                <article key={item.id} className="libraryCard" onClick={() => onOpen(item)}>
+                  <p className="eyebrow">{group.category}</p>
+                  <h3>{item.title || item.category || 'DOB Note'}</h3>
+                  <p className="clampedText">{item.notes}</p>
+                  <div className="cardActions" onClick={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={() => onOpen(item)}>View full notes</button>
+                    {onEdit && <button type="button" className="savedNotesEditButton" onClick={() => onEdit(item)}>Edit</button>}
+                    <button type="button" className="danger" onClick={() => onDelete(item.id)}>Delete</button>
+                  </div>
+                </article>
+              ))}
+            </section>
+          </section>
+        );
+      })}
+    </section>
   );
 }
 

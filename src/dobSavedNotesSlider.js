@@ -10,6 +10,7 @@ function isDobNotesActive() {
 
 function getDobSavedNotesGrid() {
   if (!isDobNotesActive()) return null;
+  if (document.querySelector('.dobNotesGroupedSaved')) return null;
   const dobNotesGrid = document.querySelector('.dobNotesSavedGrid');
   if (dobNotesGrid?.classList?.contains('libraryGrid')) return dobNotesGrid;
   const markedGrid = document.querySelector('.dobSavedNotesGrid');
