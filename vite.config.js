@@ -6,17 +6,28 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
   const [form, setForm] = useState(emptyForm);
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('All');
-  const [page, setPage] = useState(0);
+  const [revitCategoryPages, setRevitCategoryPages] = useState({});
   const [openLog, setOpenLog] = useState(null);
-  const filtered = revitLogs.filter((log) => matchesQuery(log, search) && (category === 'All' || log.category === category));
-  const pageSize = 3;
-  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const pagedLogs = filtered.slice(safePage * pageSize, safePage * pageSize + pageSize);
+  const pageSize = 2;
+  function getRevitCategory(log) {
+    const logCategory = log.category || 'Other';
+    return REVIT_CATEGORIES.includes(logCategory) ? logCategory : 'Other';
+  }
+  const filtered = revitLogs.filter((log) => matchesQuery(log, search) && (category === 'All' || getRevitCategory(log) === category));
+  const groupedLogs = REVIT_CATEGORIES
+    .map((groupCategory) => ({
+      category: groupCategory,
+      logs: filtered.filter((log) => getRevitCategory(log) === groupCategory),
+    }))
+    .filter((group) => group.logs.length > 0);
 
   useEffect(() => {
-    setPage(0);
+    setRevitCategoryPages({});
   }, [search, category, revitLogs.length]);
+
+  function changeRevitCategoryPage(groupCategory, page) {
+    setRevitCategoryPages((current) => ({ ...current, [groupCategory]: page }));
+  }
 
   async function addAttachments(files) {
     const fileList = Array.from(files || []);
@@ -42,30 +53,42 @@ const revitTroubleShootReplacement = `function RevitTroubleShoot({ revitLogs, se
     <>
       <PageHeading eyebrow="Revit Memory" title="Revit Trouble Shoot">Keep troubleshooting cards compact, then open the full problem and solution.</PageHeading>
       <div className="libraryFilters"><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search Revit troubleshooting..." /><select value={category} onChange={(e) => setCategory(e.target.value)}><option>All</option>{REVIT_CATEGORIES.map((cat) => <option key={cat}>{cat}</option>)}</select></div>
-      <div className="revitSavedHead">
-        <div>
-          <p className="eyebrow">Saved Revit Memory</p>
-          <h3>Trouble Shoot Cards</h3>
-        </div>
-        <div className="revitSlideControls">
-          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={safePage <= 0}>‹</button>
-          <span>{filtered.length ? safePage + 1 : 0} / {filtered.length ? totalPages : 0}</span>
-          <button type="button" onClick={() => setPage((current) => Math.min(totalPages - 1, current + 1))} disabled={!filtered.length || safePage + 1 >= totalPages}>›</button>
-        </div>
-      </div>
-      <section className="libraryGrid revitTroubleList">
-        {pagedLogs.length === 0 ? <div className="empty wideEmpty">No Revit troubleshooting notes yet.</div> : pagedLogs.map((log) => {
-          const attachmentCount = getRevitAttachments(log).length;
+      <section className="revitGroupedSaved">
+        {filtered.length === 0 ? <div className="empty wideEmpty">No Revit troubleshooting notes yet.</div> : groupedLogs.map((group) => {
+          const totalPages = Math.max(1, Math.ceil(group.logs.length / pageSize));
+          const currentPage = Math.min(Math.max(revitCategoryPages[group.category] || 0, 0), totalPages - 1);
+          const pageLogs = group.logs.slice(currentPage * pageSize, currentPage * pageSize + pageSize);
+
           return (
-            <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
-              <p className="eyebrow">{log.category || 'Revit'}{attachmentCount ? ' · ' + attachmentCount + ' file' + (attachmentCount === 1 ? '' : 's') : ''}</p>
-              <h3>{log.issue || 'Untitled Issue'}</h3>
-              <p className="clampedText">{log.problem || log.solution || (attachmentCount ? 'Saved attachments.' : '')}</p>
-              <div className="cardActions" onClick={(event) => event.stopPropagation()}>
-                <button type="button" onClick={() => setOpenLog(log)}>View full notes</button>
-                <button type="button" className="danger" onClick={() => setRevitLogs(revitLogs.filter((item) => item.id !== log.id))}>Delete</button>
+            <section key={group.category} className="revitCategorySection">
+              <div className="revitSavedHead">
+                <div>
+                  <p className="eyebrow">Saved Revit Memory</p>
+                  <h3>{group.category}</h3>
+                </div>
+                <div className="revitSlideControls">
+                  <button type="button" onClick={() => changeRevitCategoryPage(group.category, Math.max(0, currentPage - 1))} disabled={currentPage <= 0}>&lt;</button>
+                  <span>{currentPage + 1} / {totalPages}</span>
+                  <button type="button" onClick={() => changeRevitCategoryPage(group.category, Math.min(totalPages - 1, currentPage + 1))} disabled={currentPage + 1 >= totalPages}>&gt;</button>
+                </div>
               </div>
-            </article>
+              <section className="libraryGrid revitTroubleList">
+                {pageLogs.map((log) => {
+                  const attachmentCount = getRevitAttachments(log).length;
+                  return (
+                    <article key={log.id} className="libraryCard" onClick={() => setOpenLog(log)}>
+                      <p className="eyebrow">{group.category}{attachmentCount ? ' - ' + attachmentCount + ' file' + (attachmentCount === 1 ? '' : 's') : ''}</p>
+                      <h3>{log.issue || 'Untitled Issue'}</h3>
+                      <p className="clampedText">{log.problem || log.solution || (attachmentCount ? 'Saved attachments.' : '')}</p>
+                      <div className="cardActions" onClick={(event) => event.stopPropagation()}>
+                        <button type="button" onClick={() => setOpenLog(log)}>View full notes</button>
+                        <button type="button" className="danger" onClick={() => setRevitLogs(revitLogs.filter((item) => item.id !== log.id))}>Delete</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
+            </section>
           );
         })}
       </section>
@@ -145,12 +168,23 @@ const revitAttachmentCss = `
   padding: 6px 10px;
   font-weight: 850;
 }
+.revitGroupedSaved {
+  display: grid;
+  gap: 28px;
+  margin-top: 16px;
+  margin-bottom: 34px;
+}
+.revitCategorySection {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
 .revitSavedHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin: 8px 0 12px;
+  margin: 0;
 }
 .revitSavedHead h3 {
   margin: 0;
@@ -184,6 +218,7 @@ const revitAttachmentCss = `
 }
 .revitTroubleList {
   grid-template-columns: 1fr !important;
+  gap: 18px;
 }
 .revitTroubleList .libraryCard {
   width: 100%;
