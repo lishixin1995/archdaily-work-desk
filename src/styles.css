@@ -339,13 +339,15 @@ textarea { min-height: 122px; resize: vertical; }
 
 .dobNotesGroupedSaved {
   display: grid;
-  gap: 18px;
+  gap: 28px;
   margin-top: 16px;
+  margin-bottom: 34px;
 }
 
 .dobCategorySection {
   display: grid;
-  gap: 10px;
+  gap: 14px;
+  min-width: 0;
 }
 
 .dobCategoryHead {
@@ -404,6 +406,7 @@ textarea { min-height: 122px; resize: vertical; }
 
 .dobCategoryCards {
   grid-template-columns: 1fr;
+  gap: 18px;
 }
 
 .dobLinkPanel {
