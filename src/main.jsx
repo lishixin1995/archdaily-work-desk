@@ -20,7 +20,7 @@ const LEGACY_KEYS = {
   revit: ['archDailyWorkDesk.revitTroubleShoot', 'revitTroubleShoot'],
 };
 
-const TABS = ['Dashboard', 'Daily Task Log', 'DOB Notes', 'Links', 'AI Prompt Library', 'Revit Trouble Shoot'];
+const TABS = ['Dashboard', 'DOB Notes', 'Links', 'AI Prompt Library', 'Revit Trouble Shoot'];
 const STATUS_COLUMNS = ['Not Started', 'In Progress', 'Waiting', 'Done'];
 const PRIORITIES = ['Low', 'Medium', 'High', 'Urgent'];
 const FOCUS_COLUMNS = ['Urgent', 'High', 'In Progress', 'Waiting', 'Planned'];
@@ -430,6 +430,37 @@ function dailyLogModalData(log) {
   };
 }
 
+function dailyLogTaskId(log) {
+  const source = log.id || `${log.date || ''}-${log.project || ''}-${log.summary || ''}`;
+  return `daily-log-${encodeURIComponent(source).slice(0, 140)}`;
+}
+
+function dailyLogToDashboardTask(log) {
+  const date = log.date || todayISO();
+  const id = log.migratedToDashboardTaskId || dailyLogTaskId(log);
+  const summary = String(log.summary || '').trim();
+  const notes = String(log.notes || '').trim();
+  const project = String(log.project || '').trim();
+  const detailText = [
+    summary ? `Quick summary: ${summary}` : '',
+    notes ? `Full notes:\n${notes}` : '',
+  ].filter(Boolean).join('\n\n');
+
+  return {
+    id,
+    title: summary || project || `Daily Log - ${niceDate(date)}`,
+    project: project || 'Daily Log',
+    startDate: date,
+    dueDate: date,
+    priority: 'Medium',
+    status: 'Done',
+    notes: detailText || 'Migrated from Daily Task Log.',
+    migratedFromDailyLogId: log.id || id,
+    createdAt: log.createdAt || nowTimestamp(),
+    updatedAt: nowTimestamp(),
+  };
+}
+
 function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [tasks, setTasks] = useStoredArray(STORAGE_KEYS.tasks, LEGACY_KEYS.tasks);
@@ -438,9 +469,29 @@ function App() {
   const [prompts, setPrompts] = useStoredArray(STORAGE_KEYS.prompts, LEGACY_KEYS.prompts);
   const [revitLogs, setRevitLogs] = useStoredArray(STORAGE_KEYS.revit, LEGACY_KEYS.revit);
   const [openTask, setOpenTask] = useState(null);
-  const [openDailyLog, setOpenDailyLog] = useState(null);
 
   const sharedProps = { tasks, setTasks, dailyLogs, setDailyLogs, dobNotes, setDobNotes, prompts, setPrompts, revitLogs, setRevitLogs };
+
+  useEffect(() => {
+    if (!dailyLogs.length) return;
+    const logsToMigrate = dailyLogs.filter((log) => !log.migratedToDashboardTaskId);
+    if (!logsToMigrate.length) return;
+    setTasks((currentTasks) => {
+      const existingTaskIds = new Set(currentTasks.map((task) => task.id));
+      const migratedLogIds = new Set(currentTasks.map((task) => task.migratedFromDailyLogId).filter(Boolean));
+      const migratedTasks = logsToMigrate
+        .filter((log) => !existingTaskIds.has(dailyLogTaskId(log)) && !migratedLogIds.has(log.id || dailyLogTaskId(log)))
+        .map(dailyLogToDashboardTask);
+      return migratedTasks.length ? [...migratedTasks, ...currentTasks] : currentTasks;
+    });
+    setDailyLogs((currentLogs) => currentLogs.map((log) => (
+      log.migratedToDashboardTaskId ? log : {
+        ...log,
+        migratedToDashboardTaskId: dailyLogTaskId(log),
+        migratedToDashboardAt: nowTimestamp(),
+      }
+    )));
+  }, [dailyLogs, setTasks, setDailyLogs]);
 
   return (
     <>
@@ -462,19 +513,17 @@ function App() {
       <main className="pageShell">
         <section className="workspacePane">
           {activeTab === 'Dashboard' && <TaskDashboard tasks={tasks} setTasks={setTasks} onOpenTask={setOpenTask} />}
-          {activeTab === 'Daily Task Log' && <DailyTaskLog dailyLogs={dailyLogs} setDailyLogs={setDailyLogs} />}
           {activeTab === 'DOB Notes' && <DobNotes dobNotes={dobNotes} setDobNotes={setDobNotes} />}
           {activeTab === 'Links' && <LinkLibrary />}
           {activeTab === 'AI Prompt Library' && <PromptLibrary prompts={prompts} setPrompts={setPrompts} />}
           {activeTab === 'Revit Trouble Shoot' && <RevitTroubleShoot revitLogs={revitLogs} setRevitLogs={setRevitLogs} />}
         </section>
         <aside className="calendarDock">
-          <CalendarPanel tasks={tasks} dailyLogs={dailyLogs} onOpenTask={setOpenTask} onOpenDailyLog={setOpenDailyLog} activeTab={activeTab} />
+          <CalendarPanel tasks={tasks} dailyLogs={[]} onOpenTask={setOpenTask} onOpenDailyLog={() => {}} activeTab={activeTab} />
         </aside>
       </main>
 
       {openTask && <FullNoteModal open {...taskModalData(openTask)} onClose={() => setOpenTask(null)} />}
-      {openDailyLog && <FullNoteModal open {...dailyLogModalData(openDailyLog)} onClose={() => setOpenDailyLog(null)} />}
     </>
   );
 }
@@ -1111,12 +1160,12 @@ function CalendarPanel({ tasks, dailyLogs, onOpenTask, onOpenDailyLog, activeTab
         <div>
           <p className="eyebrow">Pinned Monthly Calendar</p>
           <h2>{view === 'Year' ? calendarDate.getFullYear() : view === 'Week' ? 'This Week' : view === 'Today' ? 'Today' : monthLabel(calendarDate)}</h2>
-          <p className="calendarHint">Visible in every section. Tasks stretch from start date to due date, and Daily Task Logs show on their saved date.</p>
+          <p className="calendarHint">Visible in every section. Tasks stretch from start date to due date.</p>
         </div>
         <div className="calendarNavButtons"><button type="button" onClick={() => shiftCalendar(-1)}>←</button><button type="button" onClick={() => shiftCalendar(1)}>→</button></div>
       </div>
       <div className="calendarMode"><button className={view === 'Today' ? 'active' : ''} onClick={() => { setView('Today'); setCalendarDate(new Date()); }}>Today</button><button className={view === 'Week' ? 'active' : ''} onClick={() => setView('Week')}>Week</button><button className={view === 'Month' ? 'active' : ''} onClick={() => setView('Month')}>Month</button><button className={view === 'Year' ? 'active' : ''} onClick={() => setView('Year')}>Year</button></div>
-      <div className="calendarLegend"><span><i className="legendDot planned"></i>Planned</span><span><i className="legendDot progress"></i>In progress</span><span><i className="legendDot urgent"></i>Urgent</span><span><i className="legendDot daily"></i>Daily log</span></div>
+      <div className="calendarLegend"><span><i className="legendDot planned"></i>Planned</span><span><i className="legendDot progress"></i>In progress</span><span><i className="legendDot urgent"></i>Urgent</span></div>
 
       {view === 'Today' && <TodayCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} onOpenDailyLog={onOpenDailyLog} />}
       {view === 'Week' && <WeekCalendarView date={calendarDate} tasks={tasks} dailyLogs={dailyLogs} onOpenTask={onOpenTask} onOpenDailyLog={onOpenDailyLog} />}
