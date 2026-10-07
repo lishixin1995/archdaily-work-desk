@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AttachmentField, AttachmentGallery } from '../components/Attachments.jsx';
 import { ConfirmButton } from '../components/ConfirmButton.jsx';
+import { FitText } from '../components/FitText.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { Pager, usePages, useScreenPage } from '../components/Pager.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -10,7 +11,7 @@ import { attachmentKind, attachmentsOf, DOB_FILES } from '../lib/files.js';
 import { DOB_CATEGORIES, normalizeDobCategory } from '../lib/library.js';
 import { copyText, matchesText, nowTimestamp, uid } from '../lib/text.js';
 
-const ROW = 248;
+const ROW = 288;
 
 function DobEditor({ note, onClose, onSaved }) {
   const { setDobNotes } = useDesk();
@@ -171,7 +172,7 @@ export function DobNotesView() {
                       <span className="card-date">{formatISO(note.date)}</span>
                     </span>
                     <strong className="card-title">{note.title || 'DOB note'}</strong>
-                    {note.notes ? <span className="card-text">{note.notes}</span> : <span className="card-text is-empty">No note text yet.</span>}
+                    {note.notes ? <FitText className="card-text">{note.notes}</FitText> : <FitText className="card-text is-empty">No note text yet.</FitText>}
                     <span className="card-foot">
                       {reference ? <span className="foot-ref">{reference}</span> : null}
                       {files.length ? <span className="on-cal">{files.length} file{files.length === 1 ? '' : 's'}</span> : null}

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AttachmentField, AttachmentGallery } from '../components/Attachments.jsx';
 import { ConfirmButton } from '../components/ConfirmButton.jsx';
+import { FitText } from '../components/FitText.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { Pager, usePages, useScreenPage } from '../components/Pager.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -10,7 +11,7 @@ import { attachmentKind, attachmentsOf, REVIT_FILES } from '../lib/files.js';
 import { REVIT_CATEGORIES, revitCategory } from '../lib/library.js';
 import { copyText, matchesText, nowTimestamp, uid } from '../lib/text.js';
 
-const ROW = 248;
+const ROW = 288;
 
 const fullText = (log) => [log.issue || '', '', log.problem || '', '', log.solution || ''].join('\n');
 
@@ -172,7 +173,7 @@ export function RevitView() {
                       <span className="card-date">{formatISO(log.date)}</span>
                     </span>
                     <strong className="card-title">{log.issue || 'Untitled issue'}</strong>
-                    {log.problem || log.solution ? <span className="card-text">{log.problem || log.solution}</span> : <span className="card-text is-empty">No description yet.</span>}
+                    {log.problem || log.solution ? <FitText className="card-text">{log.problem || log.solution}</FitText> : <FitText className="card-text is-empty">No description yet.</FitText>}
                     <span className="card-foot">
                       {log.solution ? <span>Has a fix</span> : null}
                       {files.length ? <span className="on-cal">{files.length} file{files.length === 1 ? '' : 's'}</span> : null}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ConfirmButton } from '../components/ConfirmButton.jsx';
+import { FitText } from '../components/FitText.jsx';
 import { Modal } from '../components/Modal.jsx';
 import { Pager, usePages, useScreenPage } from '../components/Pager.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -120,7 +121,7 @@ export function PromptsView() {
     .filter((item) => category === 'All' || (item.category || 'Other') === category)
     .filter((item) => !favoritesOnly || item.favorite)
     .filter((item) => matchesText([item.title, item.category, item.prompt], query)), [prompts, category, favoritesOnly, query]);
-  const [gridRef, pageSize] = useScreenPage({ minWidth: 280, rowHeight: 236 });
+  const [gridRef, pageSize] = useScreenPage({ minWidth: 300, rowHeight: 236 });
   const { page, pages, setPage, visible } = usePages(filtered, pageSize, `${query}|${category}|${favoritesOnly}|${prompts.length}`);
 
   const viewed = prompts.find((item) => item.id === viewing);
@@ -147,7 +148,7 @@ export function PromptsView() {
       </div>
       <div className="grid-frame" ref={gridRef}>
         {filtered.length ? (
-          <ul className="card-grid fit" style={{ '--row-h': '236px' }}>
+          <ul className="card-grid fit" style={{ '--row-h': '236px', '--card-min': '300px' }}>
             {visible.map((item) => (
               <li key={item.id}>
                 <article className="prompt-card">
@@ -156,7 +157,7 @@ export function PromptsView() {
                     <StarButton prompt={item} />
                   </span>
                   <button type="button" className="card-title card-link" onClick={() => setViewing(item.id)}>{item.title || 'Untitled prompt'}</button>
-                  <span className="card-text mono-text">{item.prompt || 'No prompt text yet.'}</span>
+                  <FitText className="card-text mono-text">{item.prompt || 'No prompt text yet.'}</FitText>
                   <span className="card-actions">
                     <button type="button" className="btn btn-small btn-primary" onClick={async () => toast((await copyText(item.prompt || '')) ? 'Prompt copied.' : 'Copy did not work here. Open the prompt and copy it instead.')}>Copy</button>
                     <button type="button" className="btn btn-small" onClick={() => setViewing(item.id)}>Open</button>
