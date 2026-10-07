@@ -1,10 +1,30 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useTodayAgenda } from '../components/AgendaDrawer.jsx';
 import { Legend, MonthGrid, Weekdays } from '../components/CalendarGrid.jsx';
 import { Orbit } from '../components/Orbit.jsx';
 import { useDesk, useUi } from '../desk.jsx';
 import { addDays, addMonths, formatMonth, monthStart, today, weekStart } from '../lib/dates.js';
 import { daysLeft, LEVELS } from '../lib/tasks.js';
+
+// The cover fills the first screen on any display: it runs from where it starts
+// down to the bottom of the window, and the star field reaches both window edges.
+function useFullScreenCover() {
+  const ref = useRef(null);
+  useLayoutEffect(() => {
+    const cover = ref.current;
+    const fit = () => {
+      const rect = cover.getBoundingClientRect();
+      cover.style.setProperty('--cover-top', `${Math.round(rect.top + window.scrollY)}px`);
+      cover.style.setProperty('--bleed-l', `${Math.floor(rect.left)}px`);
+      cover.style.setProperty('--bleed-r', `${Math.floor(document.documentElement.clientWidth - rect.right)}px`);
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(document.body);
+    return () => observer.disconnect();
+  }, []);
+  return ref;
+}
 
 // The cover page: the orbit and the calendar. Tasks made on the Dashboard
 // show up in both.
@@ -13,6 +33,7 @@ export function TodayView() {
   const { flashId, openDay, setDrawer, dayCard, focusItem } = useUi();
   const agenda = useTodayAgenda();
   const [month, setMonth] = useState(() => monthStart(today()));
+  const coverRef = useFullScreenCover();
 
   const stats = useMemo(() => {
     const open = datedItems.filter((item) => !item.done);
@@ -31,7 +52,7 @@ export function TodayView() {
 
   return (
     <div className="view">
-      <section className="orbit-wrap" aria-label="Orbit">
+      <section className="orbit-wrap" aria-label="Orbit" ref={coverRef}>
         <Orbit items={datedItems} flashId={flashId} onSelect={onSelect} />
         <div className="orbit-overlay">
           <p className="eyebrow">Orbit · days until due</p>
