@@ -4,11 +4,11 @@ Personal architecture work desk: a task dashboard with a calendar, DOB / code no
 
 The look and interactions follow Daily Desk's deep-space theme:
 
-- **Dashboard** – the orbit (each task is a star; closer to the sun means due sooner), the task board (Not Started, In Progress, Waiting, Done) with search, project, priority, hide-done and date filters, and a month calendar with moon phases. Select any day to add a task to it.
-- **Today's tasks** – a drawer on the right edge of every page. Hover the edge or click the tab to open it; it lists today's and overdue tasks and has a quick add.
-- **Calendar** – Day, Week, Month and Year views. Each trail runs from a task's start date to its due date.
+- **Today** (the cover page) – the orbit (each task is a star; closer to the sun means due sooner) and a month calendar with moon phases. Tasks from the Dashboard show on both; select a day to see its agenda.
+- **Dashboard** – every task in four columns (Not Started, In Progress, Waiting, Done), with search, project, priority, hide-done and date filters.
+- **Agenda** – a drawer on the right edge of every page. Hover the edge or click the tab to open it; it lists today's and overdue tasks and has a quick add.
 - **DOB Notes** and **Revit Trouble Shoot** – note cards with screenshots, PDFs and Word files; open a card to read, copy or edit it.
-- **Spaces** – AI Prompt Library (star your favorites) and Links.
+- **Spaces** – AI Prompt Library (star your favorites), Links (sites without an icon get a small planet) and Revit Trouble Shoot.
 - **Search** – finds tasks, notes, prompts and links from any page.
 
 A task's colour comes from its priority and status: Urgent, High, In progress, Waiting, then Medium and Low.
@@ -49,3 +49,4 @@ These key names must not change, or saved data will stop loading.
 - `src/views/` – one file per page
 - `src/styles/` – the theme and one stylesheet per area
 - `api/cloud-data.js` – Vercel function that reads and writes the cloud table
+- `api/favicon.js` – fetches a link's icon, and answers 404 when the site has none so the page draws a planet

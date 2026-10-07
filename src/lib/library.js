@@ -45,7 +45,9 @@ export function getLinkHost(url) {
   }
 }
 
+// Served through /api/favicon, which reports "no icon" as a plain 404 so the
+// tile can draw a planet instead.
 export function getFaviconUrl(url) {
   const host = getLinkHost(url);
-  return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';
+  return host ? `/api/favicon?domain=${encodeURIComponent(host.toLowerCase())}` : '';
 }

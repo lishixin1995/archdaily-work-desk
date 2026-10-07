@@ -1,4 +1,4 @@
-/* Lunar calendar: month grid, comet trails, week, day and year views */
+/* Lunar calendar: month grid and comet trails */
 .cal {
   --top: 36px; --lane-h: 24px;
   display: grid; gap: 16px; min-width: 0;
@@ -7,14 +7,10 @@
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
 }
 .cal-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
-.cal-head h1, .cal-head h2 { margin: 4px 0 0; font-size: clamp(26px, 3vw, 36px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; text-wrap: balance; }
+.cal-head h2 { margin: 4px 0 0; font-size: clamp(26px, 3vw, 36px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; text-wrap: balance; }
 .cal-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-soft); }
 .cal-nav { display: flex; gap: 6px; }
-.view-switch { display: inline-flex; padding: 3px; border: 1px solid var(--line-strong); border-radius: 999px; background: var(--field); }
-.view-switch button { border: 0; background: none; border-radius: 999px; padding: 6px 14px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-soft); }
-.view-switch button:hover { color: var(--text); background: var(--hover); }
-.view-switch button[aria-pressed="true"] { background: var(--accent-bright); color: var(--on-primary); box-shadow: 0 0 16px color-mix(in srgb, var(--accent) 40%, transparent); }
 .cal-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 10px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
 .cal-weekdays .short { display: none; }
 .cal-grid { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--field); }
@@ -22,7 +18,6 @@
 
 .week { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-height: calc(var(--top) + var(--lanes) * var(--lane-h) + 12px); }
 .week + .week { border-top: 1px solid var(--line); }
-.week.is-large { --top: 70px; --lane-h: 32px; }
 .cell {
   display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; min-width: 0;
   padding: 9px 10px; border: 0; border-radius: 0; background: transparent;
@@ -36,11 +31,6 @@
 .cell.is-selected { background: var(--panel-raised); box-shadow: inset 0 0 0 1px var(--line-strong); }
 .cell-num { font-variant-numeric: tabular-nums; padding: 1px 0; }
 .cell.is-today .cell-num { padding: 1px 7px; margin-left: -7px; border-radius: 999px; background: var(--accent-bright); color: var(--on-primary); box-shadow: 0 0 16px var(--accent); }
-.cell-top { display: grid; gap: 2px; }
-.cell-wd { font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
-.week.is-large .cell-num { font-family: var(--font-sans); font-size: 24px; line-height: 1.15; color: var(--text); }
-.week.is-large .cell.is-today .cell-num { margin-left: -4px; padding: 0 10px; color: var(--on-primary); }
-.week.is-large .trail-label { font-size: 11.5px; }
 .cell-moon { display: inline-flex; align-items: center; gap: 5px; }
 .cell-phase { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
 .cell.is-notable .moon { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--moon-lit) 60%, transparent)); }
@@ -70,44 +60,9 @@
 .trail.is-done .trail-line, .trail.is-done .trail-head { box-shadow: none; }
 body.has-highlight .trail { opacity: 0.2; }
 
-/* Day view */
-.dayview { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(280px, 1fr); gap: 22px; align-items: start; }
-.dayview-main { min-width: 0; padding: 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); }
-.dayview-side { display: grid; gap: 16px; min-width: 0; }
-.moon-card { display: flex; align-items: center; gap: 18px; padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); }
-.moon-card .moon { flex: 0 0 auto; filter: drop-shadow(0 0 18px color-mix(in srgb, var(--moon-lit) 30%, transparent)); }
-.moon-name { margin: 4px 0 0; font-size: 20px; font-weight: 500; }
-.moon-sub { margin: 0; font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); }
-.side-form { padding: 16px 18px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); }
-
-/* Week view: the week's open tasks under the strip */
-.week-focus { display: grid; gap: 10px; padding: 14px 8px 8px; border: 1px solid var(--line); border-radius: 16px; background: var(--field); }
-.week-focus > .eyebrow { padding: 0 10px; }
-
-/* Year view */
-.year-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 26px 22px; }
-.ymonth { min-width: 0; }
-.ymonth h3 { margin: 0 0 8px; font-family: var(--font-mono); font-size: 11px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-soft); }
-.ymonth.is-current h3 { color: var(--accent); }
-.ywd, .ydays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
-.ywd { margin-bottom: 2px; font-family: var(--font-mono); font-size: 9px; color: var(--muted); text-align: center; }
-.yday { position: relative; aspect-ratio: 1; max-width: 100%; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; }
-.yday::before { content: ""; width: var(--s, 3px); height: var(--s, 3px); border-radius: 50%; background: var(--c, var(--muted)); opacity: var(--o, 0.35); box-shadow: 0 0 calc(var(--s, 0px) * 1.6) var(--c, transparent); }
-.yday:hover { background: var(--hover); }
-.yday.is-today { box-shadow: inset 0 0 0 1px var(--accent-bright); }
-
-@media (max-width: 1100px) {
-  .year-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .dayview { grid-template-columns: minmax(0, 1fr); }
-}
-@media (max-width: 760px) {
-  .year-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-}
 @media (max-width: 640px) {
   .cal { --top: 30px; --lane-h: 10px; padding: 14px; }
-  .week.is-large { --top: 58px; --lane-h: 12px; }
-  .week.is-large .cell-num { font-size: 18px; }
-  .cal-weekdays { padding: 0 4px; }
+      .cal-weekdays { padding: 0 4px; }
   .cal-weekdays .full { display: none; }
   .cal-weekdays .short { display: inline; }
   .cell { padding: 6px 5px; font-size: 11px; flex-direction: column; gap: 3px; }

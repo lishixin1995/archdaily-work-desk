@@ -47,7 +47,7 @@ export function DayCard() {
     if (!dayCard) return undefined;
     const onDown = (event) => {
       if (panel.current?.contains(event.target)) return;
-      if (event.target.closest?.('.cell, .trail, .orbit-canvas canvas, .modal-backdrop, .yday')) return;
+      if (event.target.closest?.('.cell, .trail, .orbit-canvas canvas, .modal-backdrop')) return;
       closeDay();
     };
     const onKey = (event) => {
@@ -67,7 +67,7 @@ export function DayCard() {
     <div className="daycard" role="dialog" aria-labelledby="daycard-title" ref={panel} data-keeps-drawer>
       <div className="daycard-head">
         <div className="head-row">
-          <p className="eyebrow">Tasks · {relativeDay(date)}</p>
+          <p className="eyebrow">Agenda · {relativeDay(date)}</p>
           <button type="button" className="btn-close" aria-label="Close" onClick={closeDay}>&times;</button>
         </div>
         <h2 id="daycard-title">{formatLong(date)}</h2>

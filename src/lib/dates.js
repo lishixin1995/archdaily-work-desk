@@ -64,8 +64,6 @@ const fmt = {
   long: formatter({ weekday: 'long', month: 'long', day: 'numeric' }),
   full: formatter({ weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' }),
   month: formatter({ month: 'long', year: 'numeric' }),
-  monthName: formatter({ month: 'long' }),
-  weekday: formatter({ weekday: 'short' }),
   dateYear: formatter({ month: 'short', day: 'numeric', year: 'numeric' })
 };
 
@@ -74,8 +72,6 @@ export const formatWeekShort = (date) => (date ? fmt.weekShort.format(date) : 'N
 export const formatLong = (date) => fmt.long.format(date);
 export const formatFull = (date) => fmt.full.format(date);
 export const formatMonth = (date) => fmt.month.format(date);
-export const formatMonthName = (date) => fmt.monthName.format(date);
-export const formatWeekday = (date) => fmt.weekday.format(date);
 export const formatDateYear = (date) => (date ? fmt.dateYear.format(date) : 'No date');
 export const formatISO = (value) => (fromISO(value) ? formatDateYear(fromISO(value)) : 'No date');
 

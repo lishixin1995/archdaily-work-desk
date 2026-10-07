@@ -1,4 +1,4 @@
-/* Dashboard: the orbit and the task board */
+/* Today: the orbit. Dashboard: the task board */
 .orbit-wrap { position: relative; height: 540px; min-width: 0; }
 .orbit-canvas { position: absolute; inset: 0; }
 .orbit-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
@@ -19,8 +19,7 @@
 .tip-meta.is-overdue { color: var(--danger); }
 
 /* Task board: one column per status */
-.board-panel .panel-head { margin-bottom: 16px; }
-.board-filters { display: grid; gap: 12px; margin-bottom: 18px; }
+.board-filters { display: grid; gap: 12px; }
 .pill-select { width: auto; max-width: 240px; border-radius: 999px; padding-right: 32px; }
 .date-range { gap: 10px 16px; }
 .range-field { display: inline-flex; align-items: center; gap: 10px; }

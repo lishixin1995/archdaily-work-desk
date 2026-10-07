@@ -32,7 +32,7 @@ export function AddForm({ date, idPrefix, withEnds = true, placeholder = 'What n
     addTask(task);
     flash(task.id);
     const days = diffDays(date, fromISO(due)) + 1;
-    toast(`Added "${task.title}" to ${isToday ? 'today' : formatWeekShort(date)} as ${priority}${days > 1 ? `, through ${formatShort(fromISO(due))}` : ''}.`);
+    toast(`Added "${task.title}" to ${isToday ? "today's agenda" : formatWeekShort(date)} as ${priority}${days > 1 ? `, through ${formatShort(fromISO(due))}` : ''}.`);
     setTitle('');
     setEnds(startISO);
     setError('');
@@ -40,7 +40,7 @@ export function AddForm({ date, idPrefix, withEnds = true, placeholder = 'What n
 
   return (
     <form className="add-form" onSubmit={submit} noValidate>
-      <label className="eyebrow" htmlFor={`${idPrefix}-title`}>{isToday ? 'Add a task for today' : 'Add a task on this day'}</label>
+      <label className="eyebrow" htmlFor={`${idPrefix}-title`}>{isToday ? "Add to today's agenda" : 'Add to this day'}</label>
       <input
         id={`${idPrefix}-title`}
         type="text"

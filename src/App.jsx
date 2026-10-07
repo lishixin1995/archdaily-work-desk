@@ -7,25 +7,24 @@ import { TopMenu } from './components/TopMenu.jsx';
 import { DeskProvider, UiContext, useDesk } from './desk.jsx';
 import { today } from './lib/dates.js';
 import { activeOn, isOverdue } from './lib/tasks.js';
-import { CalendarView } from './views/CalendarView.jsx';
 import { DashboardView } from './views/DashboardView.jsx';
 import { DobNotesView } from './views/DobNotesView.jsx';
 import { LinksView } from './views/LinksView.jsx';
 import { PromptsView } from './views/PromptsView.jsx';
 import { RevitView } from './views/RevitView.jsx';
+import { TodayView } from './views/TodayView.jsx';
 
-const VIEWS = ['dashboard', 'dob', 'calendar', 'prompts', 'links', 'revit'];
+const VIEWS = ['today', 'dashboard', 'dob', 'prompts', 'links', 'revit'];
 
 function viewFromHash() {
   const hash = window.location.hash.replace('#', '');
-  return VIEWS.includes(hash) ? hash : 'dashboard';
+  return VIEWS.includes(hash) ? hash : 'today';
 }
 
 function Shell() {
   const desk = useDesk();
   const [view, setView] = useState(viewFromHash);
   const [pageFocus, setPageFocus] = useState(null);
-  const [calendar, setCalendar] = useState(() => ({ view: 'month', date: today() }));
   const [sheet, setSheet] = useState(null);
   const [dayCard, setDayCard] = useState(null);
   const [drawer, setDrawerState] = useState({ open: false, pinned: false, focusId: null });
@@ -45,10 +44,9 @@ function Shell() {
     flashTimer.current = window.setTimeout(() => setFlashId(null), 1900);
   }, []);
 
-  const navigate = useCallback((next, focusId = null, calendarState = null) => {
+  const navigate = useCallback((next, focusId = null) => {
     setDayCard(null);
     setPageFocus(focusId ? { view: next, id: focusId } : null);
-    if (calendarState) setCalendar(calendarState);
     setView(next);
     try {
       window.history.replaceState(null, '', `#${next}`);
@@ -86,8 +84,6 @@ function Shell() {
     navigate,
     pageFocus,
     clearPageFocus: () => setPageFocus(null),
-    calendar,
-    setCalendar,
     sheet,
     openItem,
     newItem,
@@ -103,7 +99,7 @@ function Shell() {
     closeSearch: () => setSearchOpen(false),
     flashId,
     flash
-  }), [view, navigate, pageFocus, calendar, sheet, openItem, newItem, closeItem, dayCard, openDay, closeDay, drawer, setDrawer, focusItem, searchOpen, flashId, flash]);
+  }), [view, navigate, pageFocus, sheet, openItem, newItem, closeItem, dayCard, openDay, closeDay, drawer, setDrawer, focusItem, searchOpen, flashId, flash]);
 
   const counts = {
     prompts: `${desk.prompts.length} saved`,
@@ -115,9 +111,9 @@ function Shell() {
     <UiContext.Provider value={ui}>
       <TopMenu view={view} counts={counts} onNavigate={(next) => navigate(next)} onSearch={() => setSearchOpen(true)} />
       <main className={`page page-${view}`}>
+        {view === 'today' ? <TodayView /> : null}
         {view === 'dashboard' ? <DashboardView /> : null}
         {view === 'dob' ? <DobNotesView /> : null}
-        {view === 'calendar' ? <CalendarView /> : null}
         {view === 'prompts' ? <PromptsView /> : null}
         {view === 'links' ? <LinksView /> : null}
         {view === 'revit' ? <RevitView /> : null}

@@ -124,20 +124,20 @@ export function AgendaDrawer() {
           className="drawer-handle"
           aria-expanded={open}
           aria-controls="drawer-panel"
-          aria-label={`Today's tasks, ${agenda.open} open${agenda.overdue ? `, ${agenda.overdue} overdue` : ''}`}
+          aria-label={`Today's agenda, ${agenda.open} open${agenda.overdue ? `, ${agenda.overdue} overdue` : ''}`}
           onClick={() => setDrawer(open && pinned ? { open: false, pinned: false } : { open: true, pinned: true })}
         >
-          <span className="handle-label">Today</span>
+          <span className="handle-label">Agenda</span>
           <span className="handle-count">{agenda.open}</span>
           {agenda.overdue ? <span className="handle-dot" /> : null}
         </button>
         <div className="drawer-panel" id="drawer-panel">
           <div className="drawer-head">
             <div className="head-row">
-              <p className="eyebrow">Today's tasks</p>
+              <p className="eyebrow">Agenda · Today</p>
               <div className="head-actions">
                 {pinned ? <span className="pin-note">Pinned</span> : null}
-                <button type="button" className="btn-close" aria-label="Close today's tasks" onClick={() => { setDrawer({ open: false, pinned: false }); handle.current?.focus(); }}>&times;</button>
+                <button type="button" className="btn-close" aria-label="Close agenda" onClick={() => { setDrawer({ open: false, pinned: false }); handle.current?.focus(); }}>&times;</button>
               </div>
             </div>
             <h2 id="drawer-title">{formatLong(agenda.now)}</h2>
@@ -149,7 +149,7 @@ export function AgendaDrawer() {
             </div>
           </div>
           <div className="drawer-scroll">
-            <Groups groups={agenda.groups} day={agenda.now} empty="Nothing is scheduled for today. Add a task below." />
+            <Groups groups={agenda.groups} day={agenda.now} empty="Nothing on today's agenda. Add something below." />
           </div>
           <AddForm key={agenda.now.getTime()} date={agenda.now} idPrefix="quick" withEnds={false} placeholder="Send DOB comments" />
         </div>

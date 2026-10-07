@@ -49,13 +49,13 @@ export function TopMenu({ view, onNavigate, onSearch, counts }) {
 
   return (
     <header className="top-menu">
-      <button type="button" className="brand" onClick={() => go('dashboard')}>
+      <button type="button" className="brand" onClick={() => go('today')}>
         <span className="brand-mark" aria-hidden="true" />Arch Daily Work Desk
       </button>
       <nav className="top-nav" aria-label="Main">
+        {navButton('today', 'Today')}
         {navButton('dashboard', 'Dashboard')}
         {navButton('dob', 'DOB Notes', '--dob')}
-        {navButton('calendar', 'Calendar')}
         <div className="spaces" ref={wrap}>
           <button
             type="button"

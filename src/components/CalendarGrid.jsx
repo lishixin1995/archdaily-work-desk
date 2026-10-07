@@ -1,4 +1,4 @@
-import { addDays, daysInMonth, diffDays, formatFull, formatMonthName, formatShort, formatWeekday, monthStart, plural, sameDay, today, weekStart } from '../lib/dates.js';
+import { addDays, daysInMonth, diffDays, formatFull, formatShort, monthStart, plural, sameDay, today, weekStart } from '../lib/dates.js';
 import { setHighlight } from '../lib/highlight.js';
 import { moonName, moonPhase } from '../lib/moon.js';
 import { activeOn, byRank, kindLabel, LEVELS, tokenFor } from '../lib/tasks.js';
@@ -56,7 +56,7 @@ function layoutSegments(items, start, end) {
 }
 
 // onPick(day, rect, { touch, itemId }) opens that day.
-export function WeekRow({ start, items, monthRef = null, large = false, minLanes = 2, selected = null, onPick }) {
+function WeekRow({ start, items, monthRef = null, minLanes = 2, selected = null, onPick }) {
   const end = addDays(start, 6);
   const { segments, lanes } = layoutSegments(items, start, end);
   const now = today();
@@ -70,7 +70,7 @@ export function WeekRow({ start, items, monthRef = null, large = false, minLanes
   }
 
   return (
-    <div className={`week${large ? ' is-large' : ''}`} style={{ '--lanes': Math.max(minLanes, lanes) }}>
+    <div className="week" style={{ '--lanes': Math.max(minLanes, lanes) }}>
       {days.map((day) => {
         const phase = moonPhase(day);
         const name = moonName(phase);
@@ -91,12 +91,10 @@ export function WeekRow({ start, items, monthRef = null, large = false, minLanes
             onFocus={() => setHighlight(onDay.map((item) => item.id))}
             onClick={(event) => onPick(day, event.currentTarget.getBoundingClientRect(), { touch: event.nativeEvent.pointerType === 'touch' })}
           >
-            {large ? (
-              <span className="cell-top"><span className="cell-wd">{formatWeekday(day)}</span><span className="cell-num">{day.getDate()}</span></span>
-            ) : <span className="cell-num">{day.getDate()}</span>}
+            <span className="cell-num">{day.getDate()}</span>
             <span className="cell-moon" title={name}>
               {notable ? <span className="cell-phase">{name.split(' ')[0]}</span> : null}
-              <Moon date={day} size={large ? 16 : 14} />
+              <Moon date={day} size={14} />
             </span>
           </button>
         );
@@ -138,47 +136,6 @@ export function MonthGrid({ month, items, minLanes = 2, selected, onPick }) {
       {Array.from({ length: weeks }, (_, index) => {
         const start = addDays(gridStart, index * 7);
         return <WeekRow key={start.getTime()} start={start} items={items} monthRef={first} minLanes={minLanes} selected={selected} onPick={onPick} />;
-      })}
-    </div>
-  );
-}
-
-export function YearGrid({ year, items, onPick }) {
-  const now = today();
-  return (
-    <div className="year-grid" onPointerLeave={() => setHighlight([])}>
-      {Array.from({ length: 12 }, (_, month) => {
-        const first = new Date(year, month, 1, 12);
-        const count = daysInMonth(year, month);
-        const current = month === now.getMonth() && year === now.getFullYear();
-        return (
-          <section key={month} className={`ymonth${current ? ' is-current' : ''}`}>
-            <h3>{formatMonthName(first)}</h3>
-            <div className="ywd" aria-hidden="true">{WEEKDAY_NAMES.map((name) => <span key={name}>{name[0]}</span>)}</div>
-            <div className="ydays">
-              {Array.from({ length: first.getDay() }, (_, index) => <span key={`pad-${index}`} />)}
-              {Array.from({ length: count }, (_, index) => {
-                const day = new Date(year, month, index + 1, 12);
-                const onDay = items.filter((item) => activeOn(item, day)).sort(byRank);
-                const top = onDay.find((item) => !item.done) || onDay[0];
-                const size = onDay.length ? Math.min(10, 4 + onDay.length * 1.5) : 3;
-                const style = top ? { '--c': `var(${tokenFor(top)})`, '--s': `${size}px`, '--o': 1 } : undefined;
-                return (
-                  <button
-                    type="button"
-                    key={index}
-                    className={`yday${sameDay(day, now) ? ' is-today' : ''}`}
-                    style={style}
-                    aria-label={`${formatFull(day)}, ${plural(onDay.length, 'item')}`}
-                    title={`${formatShort(day)} · ${plural(onDay.length, 'item')}`}
-                    onPointerEnter={() => setHighlight(onDay.map((item) => item.id))}
-                    onClick={() => onPick(day)}
-                  />
-                );
-              })}
-            </div>
-          </section>
-        );
       })}
     </div>
   );

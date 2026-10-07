@@ -67,7 +67,7 @@ function LinkIcon({ link }) {
           src={icon}
           alt=""
           className={state === 'loading' ? 'is-loading' : ''}
-          onLoad={(event) => settle(event.currentTarget.naturalWidth > 16 ? 'ok' : 'none')}
+          onLoad={(event) => settle(event.currentTarget.naturalWidth > 1 ? 'ok' : 'none')}
           onError={() => settle('none')}
         />
       )}
