@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ARCH DAILY WORK DESK</title>
-    <link rel="stylesheet" href="/uiPatch.css" />
     <style>
       html,
       body {
@@ -75,35 +74,6 @@
       </div>
     </div>
     <div id="root"></div>
-    <script type="module">
-      import { bootCloudSync } from '/src/cloudSync.js';
-
-      const hideBootSplash = () => {
-        const splash = document.getElementById('bootSplash');
-        if (splash) splash.classList.add('hide');
-      };
-
-      bootCloudSync({
-        app: 'archdaily-work-desk',
-        keys: [
-          'archDailyWorkDesk.tasks.v2',
-          'archDailyWorkDesk.dailyTaskLog.v2',
-          'archDailyWorkDesk.dobNotes.v2',
-          'archDailyWorkDesk.dobCodeLinks.v1',
-          'archDailyWorkDesk.aiPromptLibrary.v2',
-          'archDailyWorkDesk.revitTroubleShoot.v2'
-        ]
-      }).finally(() => {
-        import('/src/main.jsx').then(() => {
-          import('/src/uiEnhance.js').then(() => {
-            import('/src/uiFinalFix.js');
-            import('/src/savedNotesEdit.js');
-            import('/src/dobAttachments.js');
-            import('/src/dobSavedNotesSlider.js');
-            window.setTimeout(hideBootSplash, 120);
-          });
-        });
-      });
-    </script>
+    <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

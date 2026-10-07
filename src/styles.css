@@ -337,33 +337,33 @@ textarea { min-height: 122px; resize: vertical; }
 .libraryGrid.oneThird { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .libraryCard { margin: 0; min-height: 160px; }
 
-.dobNotesGroupedSaved {
+.categoryGroups {
   display: grid;
   gap: 28px;
   margin-top: 16px;
   margin-bottom: 34px;
 }
 
-.dobCategorySection {
+.categorySection {
   display: grid;
   gap: 14px;
   min-width: 0;
 }
 
-.dobCategoryHead {
+.categoryHead {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
 }
 
-.dobCategoryHead h3 {
+.categoryHead h3 {
   margin: 0;
   font-size: 22px;
   line-height: 1.1;
 }
 
-.dobCategoryPager {
+.categoryPager {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -372,7 +372,7 @@ textarea { min-height: 122px; resize: vertical; }
   background: rgba(255, 250, 243, .78);
 }
 
-.dobCategoryPager button {
+.categoryPager button {
   width: 34px;
   height: 34px;
   border: 0;
@@ -387,16 +387,16 @@ textarea { min-height: 122px; resize: vertical; }
   padding: 0;
 }
 
-.dobCategoryPager button:hover:not(:disabled) {
+.categoryPager button:hover:not(:disabled) {
   background: rgba(180, 66, 58, .10);
 }
 
-.dobCategoryPager button:disabled {
+.categoryPager button:disabled {
   opacity: .3;
   cursor: default;
 }
 
-.dobCategoryPager span {
+.categoryPager span {
   min-width: 42px;
   text-align: center;
   color: var(--muted);
@@ -404,7 +404,7 @@ textarea { min-height: 122px; resize: vertical; }
   font-weight: 900;
 }
 
-.dobCategoryCards {
+.categoryCards {
   grid-template-columns: 1fr;
   gap: 18px;
 }
@@ -1228,4 +1228,65 @@ textarea { min-height: 122px; resize: vertical; }
   .linkCategoryButtons {
     grid-template-columns: 1fr;
   }
+}
+
+/* ---- Formerly injected by the patch scripts ---- */
+.topbar { position: sticky; top: 8px; z-index: 1000; isolation: isolate; }
+.monthTaskOverlay { top: 38px; }
+.calendarTaskBar.done { background: #c9c3ba; color: #5f6368; }
+.editButton { color: var(--warmDark) !important; }
+
+/* Dashboard: full-width status columns, one card at a time */
+.filterCard { grid-template-columns: 1.1fr 1.1fr auto minmax(240px, 2fr); }
+.taskDateFilters { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; align-items: end; }
+.taskDateFilters label { display: grid; gap: 6px; color: #5a2e17; font-size: 12px; font-weight: 850; }
+.taskDateFilters input, .taskDateFilters button { border: 1px solid var(--line); background: rgba(255,255,255,.75); color: var(--ink); border-radius: 14px; padding: 10px 12px; font-weight: 750; }
+.kanbanGrid { grid-template-columns: 1fr; gap: 16px; }
+.kanbanColumn { position: relative; width: 100%; min-height: 190px; }
+.kanbanColumn > h3 { padding-right: 150px; }
+.kanbanColumn .taskCard { width: 100%; min-height: 180px; }
+.columnSlide { position: absolute; top: 18px; right: 16px; display: flex; align-items: center; gap: 8px; }
+.columnSlide button { width: 34px; height: 34px; border-radius: 999px; border: 1px solid var(--line); background: rgba(255,255,255,.9); color: var(--ink); font-size: 20px; font-weight: 900; }
+.columnSlide button:disabled { opacity: .42; cursor: default; }
+.columnSlide span { min-width: 54px; text-align: center; color: var(--muted); font-size: 12px; font-weight: 900; }
+
+/* Revit: one card per row */
+.singleColumn { grid-template-columns: 1fr !important; gap: 18px; }
+.singleColumn .libraryCard { width: 100%; min-height: 0; }
+
+/* Edit dialogs */
+.editOverlay { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(34, 27, 22, .42); }
+.editModal { width: min(760px, 94vw); max-height: min(86vh, 820px); overflow: auto; border: 1px solid var(--line); border-radius: 24px; background: var(--paper); box-shadow: 0 24px 70px rgba(64, 43, 26, .22); padding: 24px; }
+.editModal h2 { margin: 0 0 16px; font-size: 28px; }
+.editGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.editGrid label { display: grid; gap: 7px; color: #5a2e17; font-size: 13px; font-weight: 850; }
+.editGrid label.wide { grid-column: 1 / -1; }
+.editGrid input, .editGrid select, .editGrid textarea { width: 100%; border: 1px solid var(--line); border-radius: 15px; background: rgba(255, 255, 255, .76); color: var(--ink); padding: 12px 14px; outline: none; font-weight: 650; }
+.editGrid textarea { min-height: 140px; }
+.editGrid .editCheck { display: flex; align-items: center; gap: 9px; align-self: end; padding-bottom: 12px; }
+.editGrid .editCheck input { width: auto; }
+.editActions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px; }
+.editActions button { border: 1px solid var(--line); border-radius: 999px; background: white; color: var(--ink); padding: 10px 16px; font-weight: 850; }
+.editActions .primary { border: 0; }
+
+/* Attachments */
+.attachmentPreviewGrid { display: grid; gap: 10px; margin-top: 12px; }
+.attachmentPreview { display: flex; gap: 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.7); }
+.attachmentPreview img, .documentThumb { width: 92px; height: 64px; border-radius: 10px; border: 1px solid var(--line); }
+.attachmentPreview img { object-fit: cover; }
+.documentThumb { display: grid; place-items: center; background: rgba(238,228,214,.82); color: var(--warmDark); font-size: 14px; font-weight: 950; letter-spacing: .08em; }
+.attachmentPreview strong { display: block; margin-bottom: 4px; font-size: 13px; }
+.attachmentPreview small { display: block; margin-bottom: 6px; color: var(--muted); font-size: 11px; font-weight: 800; }
+.attachmentPreview button { width: auto; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--warmDark); background: white; }
+.modalAttachmentGrid { display: grid; gap: 8px; }
+.modalAttachmentLink { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255,255,255,.66); padding: 10px 12px; color: var(--ink); text-decoration: none; }
+.modalAttachmentLink:hover { border-color: rgba(163,102,58,.48); background: rgba(255,255,255,.82); }
+.modalAttachmentLink strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modalAttachmentLink span { color: var(--muted); font-size: 12px; font-weight: 800; white-space: nowrap; }
+
+@media (max-width: 900px) {
+  .taskDateFilters { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 720px) {
+  .editGrid { grid-template-columns: 1fr; }
 }
