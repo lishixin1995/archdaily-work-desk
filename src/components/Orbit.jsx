@@ -90,11 +90,14 @@ export function Orbit({ items, flashId, onSelect }) {
       canvas.height = Math.round(H * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       const small = W < 560;
-      tilt = small ? 0.5 : 0.42;
+      const reach = W * (small ? 0.45 : 0.4);
+      // On squarer screens the orbit runs out of width first, so the plane tips
+      // toward the viewer and the rings fill the spare height too.
+      tilt = Math.min(small ? 0.72 : 0.56, Math.max(small ? 0.5 : 0.42, (H * 0.34) / reach));
       cx = W * (small ? 0.5 : 0.56);
-      cy = H * (small ? 0.66 : 0.56);
-      R = Math.min(W * (small ? 0.45 : 0.4), (H * 0.34) / tilt);
-      const count = Math.max(60, Math.min(280, Math.round((W * H) / 2600)));
+      cy = H * (small ? 0.58 : 0.56);
+      R = Math.min(reach, (H * 0.34) / tilt);
+      const count = Math.max(60, Math.min(420, Math.round((W * H) / 2600)));
       field = Array.from({ length: count }, () => ({
         x: Math.random() * W,
         y: Math.random() * H,

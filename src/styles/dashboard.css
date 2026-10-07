@@ -1,6 +1,7 @@
 /* Today: the orbit. Dashboard: the task board */
-.orbit-wrap { position: relative; height: 540px; min-width: 0; }
-.orbit-canvas { position: absolute; inset: 0; }
+/* --cover-top and --bleed-l/r are measured in TodayView, so the cover fills the first screen on any display. */
+.orbit-wrap { position: relative; min-width: 0; height: max(420px, calc(100vh - var(--cover-top, 76px))); height: max(420px, calc(100svh - var(--cover-top, 76px))); }
+.orbit-canvas { position: absolute; inset: 0 calc(-1 * var(--bleed-r, 0px)) 0 calc(-1 * var(--bleed-l, 0px)); }
 .orbit-canvas canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: manipulation; }
 .orbit-overlay { position: absolute; top: 6px; left: 0; display: grid; gap: 10px; justify-items: start; max-width: min(660px, 100%); pointer-events: none; }
 .orbit-overlay h2 { margin: 0; font-size: clamp(20px, 2vw, 24px); font-weight: 500; letter-spacing: -0.005em; text-wrap: balance; }
@@ -33,9 +34,9 @@
 .btn-small-icon { width: 30px; height: 30px; font-size: 15px; }
 
 @media (max-width: 1280px) { .board { grid-template-columns: repeat(min(var(--cols, 4), 2), minmax(0, 1fr)); } }
-@media (max-width: 900px) { .orbit-wrap { height: 480px; } }
 @media (max-width: 640px) {
-  .orbit-wrap { height: 470px; }
+  /* The round Agenda button sits in the bottom-right corner, 68px in from the window edge. */
+  .orbit-legend { right: max(0px, calc(76px - var(--bleed-r, 0px))); }
   .board { grid-template-columns: minmax(0, 1fr); }
   .pill-select { max-width: none; flex: 1 1 100%; }
 }
