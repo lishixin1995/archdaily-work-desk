@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 
 // Every list lives in localStorage under these keys. cloudSync.js mirrors each
 // write to the cloud database, so the key names must never change.
@@ -11,8 +11,7 @@ export const STORAGE_KEYS = {
   revit: 'archDailyWorkDesk.revitTroubleShoot.v2',
 };
 
-// Older versions of the site saved under these names. They are read only when
-// the current key is empty.
+// Older versions of the site saved under these names.
 const LEGACY_KEYS = {
   tasks: ['archDailyWorkDesk.tasks', 'tasks', 'dashboardTasks'],
   daily: ['archDailyWorkDesk.dailyTaskLog', 'dailyTaskLog'],
@@ -36,47 +35,58 @@ function safeParse(value) {
   }
 }
 
-function readList(name) {
-  const primary = localStorage.getItem(STORAGE_KEYS[name]);
-  if (primary) return safeParse(primary);
-  for (const key of LEGACY_KEYS[name]) {
-    const legacy = localStorage.getItem(key);
-    if (legacy) return safeParse(legacy);
+// A list found only under a legacy key is copied to the current key, so it
+// syncs from then on. Runs once, before the first render.
+export function promoteLegacyLists() {
+  for (const [name, key] of Object.entries(STORAGE_KEYS)) {
+    if (localStorage.getItem(key) !== null) continue;
+    const legacy = LEGACY_KEYS[name].map((old) => localStorage.getItem(old)).find(Boolean);
+    if (legacy && safeParse(legacy).length) localStorage.setItem(key, JSON.stringify(safeParse(legacy)));
   }
-  return [];
 }
 
-// One stored list as React state. The setter accepts a value or an updater
-// function, and always works from the latest stored list.
+const cache = new Map();
+const listeners = new Map();
+
+function read(name) {
+  if (!cache.has(name)) cache.set(name, safeParse(localStorage.getItem(STORAGE_KEYS[name])));
+  return cache.get(name);
+}
+
+function emit(name) {
+  (listeners.get(name) || []).forEach((listener) => listener());
+}
+
+function write(name, value) {
+  cache.set(name, value);
+  localStorage.setItem(STORAGE_KEYS[name], JSON.stringify(value));
+  emit(name);
+}
+
+// Another tab changed a list.
+if (typeof window !== 'undefined') {
+  window.addEventListener('storage', (event) => {
+    const name = Object.keys(STORAGE_KEYS).find((key) => STORAGE_KEYS[key] === event.key);
+    if (!name) return;
+    cache.delete(name);
+    emit(name);
+  });
+}
+
+function subscribe(name, listener) {
+  if (!listeners.has(name)) listeners.set(name, new Set());
+  listeners.get(name).add(listener);
+  return () => listeners.get(name).delete(listener);
+}
+
+// One stored list. The setter takes a value or an updater function, and the
+// updater always gets the latest stored list, so quick edits never undo each other.
 export function useStoredList(name) {
-  const [items, setItems] = useState(() => readList(name));
-
-  // Copy a list found only under a legacy key to the current key, so it syncs.
-  useEffect(() => {
-    if (localStorage.getItem(STORAGE_KEYS[name]) === null && items.length) {
-      localStorage.setItem(STORAGE_KEYS[name], JSON.stringify(items));
-    }
-    // Runs once, with the list read on mount.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [name]);
-
-  useEffect(() => {
-    const keys = [STORAGE_KEYS[name], ...LEGACY_KEYS[name]];
-    function syncFromStorage(event) {
-      if (event?.key && !keys.includes(event.key)) return;
-      setItems(readList(name));
-    }
-    window.addEventListener('storage', syncFromStorage);
-    return () => window.removeEventListener('storage', syncFromStorage);
-  }, [name]);
-
+  const items = useSyncExternalStore(useCallback((listener) => subscribe(name, listener), [name]), () => read(name));
   const update = useCallback((next) => {
-    setItems((current) => {
-      const value = typeof next === 'function' ? next(current) : next;
-      localStorage.setItem(STORAGE_KEYS[name], JSON.stringify(value));
-      return value;
-    });
+    const current = read(name);
+    const value = typeof next === 'function' ? next(current) : next;
+    if (value !== current) write(name, value);
   }, [name]);
-
   return [items, update];
 }

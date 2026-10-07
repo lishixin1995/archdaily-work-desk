@@ -45,11 +45,6 @@ export function getLinkHost(url) {
   }
 }
 
-export function getLinkInitial(link) {
-  const source = link.title || getLinkHost(link.url) || link.category || 'Link';
-  return source.trim().charAt(0).toUpperCase() || 'L';
-}
-
 export function getFaviconUrl(url) {
   const host = getLinkHost(url);
   return host ? `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=64` : '';

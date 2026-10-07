@@ -2,16 +2,20 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ARCH DAILY WORK DESK</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#05040c" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <title>Arch Daily Work Desk</title>
     <style>
       html,
       body {
         margin: 0;
         min-height: 100%;
-        background:
-          radial-gradient(circle at 18% 12%, rgba(163, 102, 58, 0.10), transparent 28%),
-          linear-gradient(135deg, #fbf6ee 0%, #f5efe5 46%, #eee3d5 100%);
+        background: #05040c;
+        color-scheme: dark;
       }
 
       #bootSplash {
@@ -21,11 +25,11 @@
         display: grid;
         place-items: center;
         background:
-          radial-gradient(circle at 18% 12%, rgba(163, 102, 58, 0.10), transparent 28%),
-          linear-gradient(135deg, #fbf6ee 0%, #f5efe5 46%, #eee3d5 100%);
-        color: #1f2933;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        transition: opacity .22s ease, visibility .22s ease;
+          radial-gradient(1100px 650px at 28% -12%, rgba(170, 100, 210, 0.2), transparent 60%),
+          #05040c;
+        color: #f2edff;
+        font-family: "Space Grotesk", system-ui, -apple-system, "Segoe UI", sans-serif;
+        transition: opacity .25s ease, visibility .25s ease;
       }
 
       #bootSplash.hide {
@@ -35,42 +39,74 @@
       }
 
       .bootCard {
-        width: min(520px, calc(100vw - 48px));
-        padding: 28px 30px;
-        border: 1px solid rgba(124, 91, 56, 0.16);
-        border-radius: 26px;
-        background: rgba(255, 250, 243, 0.74);
-        box-shadow: 0 26px 70px rgba(64, 43, 26, 0.10);
+        display: grid;
+        justify-items: center;
+        gap: 14px;
+        text-align: center;
+      }
+
+      .bootOrbit {
+        position: relative;
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        border: 1px solid rgba(230, 217, 255, 0.55);
+        box-shadow: 0 0 24px rgba(201, 176, 255, 0.35);
+      }
+
+      .bootOrbit::before {
+        content: "";
+        position: absolute;
+        inset: 14px;
+        border-radius: 50%;
+        background: #e6d9ff;
+        box-shadow: 0 0 14px #c9b0ff;
+      }
+
+      .bootOrbit::after {
+        content: "";
+        position: absolute;
+        top: -4px;
+        left: 18px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #f29ac4;
+        box-shadow: 0 0 8px #f29ac4;
+        transform-origin: 3.5px 25.5px;
+        animation: bootSpin 2.4s linear infinite;
+      }
+
+      @keyframes bootSpin {
+        to { transform: rotate(360deg); }
       }
 
       .bootEyebrow {
-        margin-bottom: 8px;
-        color: #64748b;
-        font-size: 13px;
-        font-weight: 900;
-        letter-spacing: .32em;
-      }
-
-      .bootTitle {
         margin: 0;
-        font-size: 38px;
-        line-height: .95;
-        letter-spacing: -.04em;
+        color: #c9b0ff;
+        font-family: "JetBrains Mono", ui-monospace, monospace;
+        font-size: 11px;
+        letter-spacing: .2em;
+        text-transform: uppercase;
       }
 
       .bootSub {
-        margin: 12px 0 0;
-        color: #64748b;
-        font-size: 15px;
+        margin: 0;
+        color: #8b81a6;
+        font-size: 14px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bootOrbit::after { animation: none; }
       }
     </style>
   </head>
   <body>
     <div id="bootSplash" aria-hidden="true">
       <div class="bootCard">
-        <div class="bootEyebrow">ARCH DAILY WORK DESK</div>
-        <h1 class="bootTitle">Opening desk</h1>
-        <p class="bootSub">Syncing your latest notes and tasks...</p>
+        <div class="bootOrbit"></div>
+        <p class="bootEyebrow">Arch Daily Work Desk</p>
+        <p class="bootSub">Syncing your tasks, notes and links…</p>
       </div>
     </div>
     <div id="root"></div>

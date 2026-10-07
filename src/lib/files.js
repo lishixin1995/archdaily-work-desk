@@ -7,7 +7,8 @@ export const DOB_FILES = {
   types: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   pattern: /\.(pdf|docx?)$/i,
   images: true,
-  hint: 'screenshots, PDF or Word files',
+  title: 'Drop screenshots, images, PDFs or Word files',
+  hint: 'or select files · images, PDF, DOC, DOCX'
 };
 
 export const REVIT_FILES = {
@@ -15,7 +16,8 @@ export const REVIT_FILES = {
   types: ['image/jpeg', 'image/png', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
   pattern: /\.(pdf|docx|jpe?g|png)$/i,
   images: false,
-  hint: 'PDF, JPEG/JPG, PNG or DOCX files',
+  title: 'Drop reference files',
+  hint: 'or select files · PDF, JPG, PNG, DOCX'
 };
 
 function fileToDataUrl(file) {
@@ -81,10 +83,22 @@ export function formatFileSize(size = 0) {
   return `${(size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function isImageAttachment(attachment) {
-  return attachment?.kind === 'image'
-    || String(attachment?.type || '').startsWith('image/')
-    || String(attachment?.dataUrl || '').startsWith('data:image/');
+export function attachmentKind(file = {}) {
+  const type = String(file.type || '');
+  const name = String(file.name || '').toLowerCase();
+  if (file.kind === 'image' || type.startsWith('image/') || String(file.dataUrl || '').startsWith('data:image/')) return 'image';
+  if (type === 'application/pdf' || name.endsWith('.pdf')) return 'pdf';
+  return 'file';
+}
+
+export function fileExtension(name = '') {
+  return String(name).split('.').pop()?.toUpperCase() || 'FILE';
+}
+
+// Browsers refuse to frame or open long data: URLs, so previews use blob URLs.
+export async function dataUrlToBlobUrl(dataUrl) {
+  const response = await fetch(dataUrl);
+  return URL.createObjectURL(await response.blob());
 }
 
 // Older notes kept one screenshot in `screenshot`; newer ones keep a list in
@@ -93,11 +107,4 @@ export function attachmentsOf(item) {
   if (!item) return [];
   const list = Array.isArray(item.attachments) ? item.attachments : [];
   return item.screenshot && !list.some((file) => file.id && file.id === item.screenshot.id) ? [item.screenshot, ...list] : list;
-}
-
-export function fileBadge(attachment) {
-  const type = String(attachment?.type || '');
-  const name = String(attachment?.name || '').toLowerCase();
-  if (type.includes('pdf') || name.endsWith('.pdf')) return 'PDF';
-  return 'DOC';
 }
