@@ -1,0 +1,76 @@
+/* Lunar calendar: month grid and comet trails */
+.cal {
+  --top: 36px; --lane-h: 24px;
+  display: grid; gap: 16px; min-width: 0;
+  padding: clamp(16px, 2vw, 26px);
+  border: 1px solid var(--line); border-radius: 22px; background: var(--panel);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.cal-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px 24px; }
+.cal-head h2 { margin: 4px 0 0; font-size: clamp(26px, 3vw, 36px); font-weight: 600; line-height: 1.1; letter-spacing: -0.015em; text-wrap: balance; }
+.cal-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-soft); }
+.cal-nav { display: flex; gap: 6px; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); padding: 0 10px; font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+.cal-weekdays .short { display: none; }
+.cal-grid { border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--field); }
+.cal-foot { margin: 0; font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.03em; color: var(--muted); }
+
+.week { position: relative; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); min-height: calc(var(--top) + var(--lanes) * var(--lane-h) + 12px); }
+.week + .week { border-top: 1px solid var(--line); }
+.cell {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 4px; min-width: 0;
+  padding: 9px 10px; border: 0; border-radius: 0; background: transparent;
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 500; color: var(--text-soft); text-align: left;
+  transition: background 0.18s;
+}
+.cell + .cell { border-left: 1px solid var(--line); }
+.cell:hover { background: var(--hover); }
+.cell:focus-visible { outline-offset: -2px; }
+.cell.is-out .cell-num, .cell.is-out .cell-moon { opacity: 0.35; }
+.cell.is-selected { background: var(--panel-raised); box-shadow: inset 0 0 0 1px var(--line-strong); }
+.cell-num { font-variant-numeric: tabular-nums; padding: 1px 0; }
+.cell.is-today .cell-num { padding: 1px 7px; margin-left: -7px; border-radius: 999px; background: var(--accent-bright); color: var(--on-primary); box-shadow: 0 0 16px var(--accent); }
+.cell-moon { display: inline-flex; align-items: center; gap: 5px; }
+.cell-phase { font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.cell.is-notable .moon { filter: drop-shadow(0 0 4px color-mix(in srgb, var(--moon-lit) 60%, transparent)); }
+
+.trails { position: absolute; inset: 0; pointer-events: none; }
+.trail {
+  position: absolute;
+  left: calc(var(--col) * (100% / 7) + 8px);
+  width: calc(var(--span) * (100% / 7) - 16px);
+  top: calc(var(--top) + var(--lane) * var(--lane-h));
+  height: var(--lane-h);
+  pointer-events: auto; cursor: pointer; transition: opacity 0.2s;
+}
+.trail-label {
+  position: absolute; left: 0; right: 12px; top: 0;
+  font-family: var(--font-mono); font-size: 10.5px; font-weight: 500; line-height: 1.2; letter-spacing: 0.02em;
+  color: var(--trail-label, var(--text-soft)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.trail:hover .trail-label { color: var(--text); }
+.trail-line { position: absolute; left: 0; right: 4px; bottom: 5px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, color-mix(in srgb, var(--c) 40%, transparent), var(--c)); box-shadow: 0 0 8px color-mix(in srgb, var(--c) 55%, transparent); }
+.trail.has-tail .trail-line { background: linear-gradient(90deg, transparent, var(--c)); }
+.trail-head { position: absolute; right: 0; bottom: 2px; width: 8px; height: 8px; border-radius: 50%; background: var(--c); box-shadow: 0 0 10px var(--c); }
+.trail.is-waiting .trail-line { background: repeating-linear-gradient(90deg, var(--c) 0 5px, transparent 5px 9px); box-shadow: none; }
+.trail.is-waiting .trail-head { background: var(--bg); border: 1.5px solid var(--c); box-shadow: none; }
+.trail.is-overdue .trail-head { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--danger), 0 0 12px var(--danger); }
+.trail.is-done .trail-label { color: var(--muted); text-decoration: line-through; }
+.trail.is-done .trail-line, .trail.is-done .trail-head { box-shadow: none; }
+body.has-highlight .trail { opacity: 0.2; }
+
+@media (max-width: 640px) {
+  .cal { --top: 30px; --lane-h: 10px; padding: 14px; }
+      .cal-weekdays { padding: 0 4px; }
+  .cal-weekdays .full { display: none; }
+  .cal-weekdays .short { display: inline; }
+  .cell { padding: 6px 5px; font-size: 11px; flex-direction: column; gap: 3px; }
+  .cell.is-today .cell-num { margin-left: -4px; padding: 0 5px; }
+  .cell-moon .moon { width: 10px; height: 10px; }
+  .cell-phase { display: none; }
+  .trail { left: calc(var(--col) * (100% / 7) + 3px); width: calc(var(--span) * (100% / 7) - 6px); }
+  .trail-label { display: none; }
+  .trail-line { bottom: 3px; }
+  .trail-head { width: 6px; height: 6px; bottom: 1px; }
+  }
