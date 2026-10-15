@@ -1,3 +1,5 @@
+import { storeFile } from './fileStore.js';
+import { STORAGE_KEYS } from './storage.js';
 import { uid } from './text.js';
 
 // DOB notes take screenshots, PDFs and Word files; Revit notes take PDF, DOCX,
@@ -107,4 +109,39 @@ export function attachmentsOf(item) {
   if (!item) return [];
   const list = Array.isArray(item.attachments) ? item.attachments : [];
   return item.screenshot && !list.some((file) => file.id && file.id === item.screenshot.id) ? [item.screenshot, ...list] : list;
+}
+
+// Saves the contents of newly added files and returns the list without them,
+// so a note stays small. A file that could not be kept anywhere stays inline.
+export async function storeAttachments(list) {
+  return Promise.all(list.map(async (file) => {
+    if (!file.dataUrl) return file;
+    const id = file.id || uid();
+    const parts = await storeFile(id, file.dataUrl);
+    if (!parts) return { ...file, id };
+    const { dataUrl, ...rest } = file;
+    return { ...rest, id, parts };
+  }));
+}
+
+// Older versions kept every file inside its note, which fills localStorage and
+// then blocks every save. Moves those files out once, on start.
+export async function moveInlineFiles() {
+  for (const key of [STORAGE_KEYS.dob, STORAGE_KEYS.revit]) {
+    const raw = localStorage.getItem(key);
+    if (!raw || !raw.includes('"dataUrl"')) continue;
+    let list;
+    try {
+      list = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+    if (!Array.isArray(list)) continue;
+    const moved = await Promise.all(list.map(async (item) => {
+      if (!attachmentsOf(item).some((file) => file.dataUrl)) return item;
+      const { screenshot, ...rest } = item;
+      return { ...rest, attachments: await storeAttachments(attachmentsOf(item)) };
+    }));
+    localStorage.setItem(key, JSON.stringify(moved));
+  }
 }

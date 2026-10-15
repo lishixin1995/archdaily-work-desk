@@ -21,6 +21,7 @@ const LEGACY_KEYS = {
   revit: ['archDailyWorkDesk.revitTroubleShoot', 'revitTroubleShoot'],
 };
 
+export const CLOUD_APP = 'archdaily-work-desk';
 export const CLOUD_KEYS = Object.values(STORAGE_KEYS);
 
 function safeParse(value) {
@@ -57,9 +58,11 @@ function emit(name) {
   (listeners.get(name) || []).forEach((listener) => listener());
 }
 
+// Throws when the browser refuses the write (storage full); the list then
+// stays as it was.
 function write(name, value) {
-  cache.set(name, value);
   localStorage.setItem(STORAGE_KEYS[name], JSON.stringify(value));
+  cache.set(name, value);
   emit(name);
 }
 
