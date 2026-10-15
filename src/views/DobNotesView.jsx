@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AttachmentField, AttachmentGallery } from '../components/Attachments.jsx';
+import { AttachmentField, AttachmentGallery, AttachmentImage } from '../components/Attachments.jsx';
 import { ConfirmButton } from '../components/ConfirmButton.jsx';
 import { FitText } from '../components/FitText.jsx';
 import { Modal } from '../components/Modal.jsx';
@@ -7,7 +7,7 @@ import { Pager, usePages, useScreenPage } from '../components/Pager.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useDesk, useUi } from '../desk.jsx';
 import { formatISO, todayISO } from '../lib/dates.js';
-import { attachmentKind, attachmentsOf, DOB_FILES } from '../lib/files.js';
+import { attachmentKind, attachmentsOf, DOB_FILES, storeAttachments } from '../lib/files.js';
 import { DOB_CATEGORIES, normalizeDobCategory } from '../lib/library.js';
 import { copyText, matchesText, nowTimestamp, uid } from '../lib/text.js';
 
@@ -27,28 +27,40 @@ function DobEditor({ note, onClose, onSaved }) {
     attachments: attachmentsOf(note)
   }));
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const set = (field) => (value) => { setDraft((current) => ({ ...current, [field]: value })); setError(''); };
   const input = (field) => ({ value: draft[field], onChange: (event) => set(field)(event.target.value) });
 
-  function save(event) {
+  async function save(event) {
     event?.preventDefault();
+    if (saving) return;
     if (!draft.title.trim() && !draft.notes.trim() && !draft.attachments.length) {
       setError('Add a title, the note or a file first.');
       return;
     }
-    const now = nowTimestamp();
-    const fields = { ...draft, title: draft.title.trim(), year: draft.year.trim(), code: draft.code.trim(), chapter: draft.chapter.trim(), updatedAt: now };
+    setSaving(true);
     let id = note?.id;
-    if (note) {
-      // The old single screenshot is part of the attachments list now.
-      setDobNotes((list) => list.map((item) => {
-        if (item.id !== note.id) return item;
-        const { screenshot, ...rest } = item;
-        return { ...rest, ...fields };
-      }));
-    } else {
-      id = uid();
-      setDobNotes((list) => [{ ...fields, id, createdAt: now }, ...list]);
+    let fields;
+    try {
+      const attachments = await storeAttachments(draft.attachments);
+      const now = nowTimestamp();
+      fields = { ...draft, attachments, title: draft.title.trim(), year: draft.year.trim(), code: draft.code.trim(), chapter: draft.chapter.trim(), updatedAt: now };
+      if (note) {
+        // The old single screenshot is part of the attachments list now.
+        setDobNotes((list) => list.map((item) => {
+          if (item.id !== note.id) return item;
+          const { screenshot, ...rest } = item;
+          return { ...rest, ...fields };
+        }));
+      } else {
+        id = uid();
+        setDobNotes((list) => [{ ...fields, id, createdAt: now }, ...list]);
+      }
+    } catch (failure) {
+      console.warn('[dob] save failed', failure);
+      setError('This browser refused to save the note (its storage may be full). Your text is still here, so copy it before closing.');
+      setSaving(false);
+      return;
     }
     toast(`Saved "${fields.title || 'DOB note'}".`);
     onSaved(id);
@@ -60,7 +72,7 @@ function DobEditor({ note, onClose, onSaved }) {
       title={note ? 'Edit DOB note' : 'New DOB note'}
       onClose={onClose}
       wide
-      footer={<><span className="foot-spacer" /><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="button" className="btn btn-primary" onClick={save}>Save note</button></>}
+      footer={<><span className="foot-spacer" /><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="button" className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save note'}</button></>}
     >
       <form className="sheet-form" onSubmit={save} noValidate>
         <label className="field field-wide"><span>Title</span><input type="text" placeholder="Code / DOB quick note title" {...input('title')} /></label>
@@ -166,7 +178,7 @@ export function DobNotesView() {
               return (
                 <li key={note.id}>
                   <button type="button" className={`note-card${flashId === note.id ? ' is-new' : ''}`} style={{ '--c': 'var(--dob)' }} onClick={() => setViewing(note.id)}>
-                    {image ? <img className="note-thumb" src={image.dataUrl} alt="" /> : null}
+                    {image ? <AttachmentImage className="note-thumb" file={image} placeholder={<span className="note-thumb" aria-hidden="true" />} /> : null}
                     <span className="card-top">
                       <span className="chip"><i />{normalizeDobCategory(note.category)}</span>
                       <span className="card-date">{formatISO(note.date)}</span>

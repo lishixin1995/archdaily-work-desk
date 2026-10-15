@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { AttachmentField, AttachmentGallery } from '../components/Attachments.jsx';
+import { AttachmentField, AttachmentGallery, AttachmentImage } from '../components/Attachments.jsx';
 import { ConfirmButton } from '../components/ConfirmButton.jsx';
 import { FitText } from '../components/FitText.jsx';
 import { Modal } from '../components/Modal.jsx';
@@ -7,7 +7,7 @@ import { Pager, usePages, useScreenPage } from '../components/Pager.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { useDesk, useUi } from '../desk.jsx';
 import { formatISO, todayISO } from '../lib/dates.js';
-import { attachmentKind, attachmentsOf, REVIT_FILES } from '../lib/files.js';
+import { attachmentKind, attachmentsOf, REVIT_FILES, storeAttachments } from '../lib/files.js';
 import { REVIT_CATEGORIES, revitCategory } from '../lib/library.js';
 import { copyText, matchesText, nowTimestamp, uid } from '../lib/text.js';
 
@@ -27,27 +27,39 @@ function RevitEditor({ log, onClose, onSaved }) {
     attachments: attachmentsOf(log)
   }));
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const set = (field) => (value) => { setDraft((current) => ({ ...current, [field]: value })); setError(''); };
   const input = (field) => ({ value: draft[field], onChange: (event) => set(field)(event.target.value) });
 
-  function save(event) {
+  async function save(event) {
     event?.preventDefault();
+    if (saving) return;
     if (!draft.issue.trim() && !draft.problem.trim() && !draft.solution.trim() && !draft.attachments.length) {
       setError('Add the issue, a description or a file first.');
       return;
     }
-    const now = nowTimestamp();
-    const fields = { ...draft, issue: draft.issue.trim(), updatedAt: now };
+    setSaving(true);
     let id = log?.id;
-    if (log) {
-      setRevitLogs((list) => list.map((item) => {
-        if (item.id !== log.id) return item;
-        const { screenshot, ...rest } = item;
-        return { ...rest, ...fields };
-      }));
-    } else {
-      id = uid();
-      setRevitLogs((list) => [{ ...fields, id, createdAt: now }, ...list]);
+    let fields;
+    try {
+      const attachments = await storeAttachments(draft.attachments);
+      const now = nowTimestamp();
+      fields = { ...draft, attachments, issue: draft.issue.trim(), updatedAt: now };
+      if (log) {
+        setRevitLogs((list) => list.map((item) => {
+          if (item.id !== log.id) return item;
+          const { screenshot, ...rest } = item;
+          return { ...rest, ...fields };
+        }));
+      } else {
+        id = uid();
+        setRevitLogs((list) => [{ ...fields, id, createdAt: now }, ...list]);
+      }
+    } catch (failure) {
+      console.warn('[revit] save failed', failure);
+      setError('This browser refused to save the note (its storage may be full). Your text is still here, so copy it before closing.');
+      setSaving(false);
+      return;
     }
     toast(`Saved "${fields.issue || 'Revit note'}".`);
     onSaved(id);
@@ -59,7 +71,7 @@ function RevitEditor({ log, onClose, onSaved }) {
       title={log ? 'Edit trouble shoot' : 'New trouble shoot'}
       onClose={onClose}
       wide
-      footer={<><span className="foot-spacer" /><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="button" className="btn btn-primary" onClick={save}>Save</button></>}
+      footer={<><span className="foot-spacer" /><button type="button" className="btn" onClick={onClose}>Cancel</button><button type="button" className="btn btn-primary" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button></>}
     >
       <form className="sheet-form" onSubmit={save} noValidate>
         <label className="field field-wide"><span>Issue title</span><input type="text" placeholder="What went wrong?" {...input('issue')} /></label>
@@ -167,7 +179,7 @@ export function RevitView() {
               return (
                 <li key={log.id}>
                   <button type="button" className={`note-card${flashId === log.id ? ' is-new' : ''}`} style={{ '--c': 'var(--revit)' }} onClick={() => setViewing(log.id)}>
-                    {image ? <img className="note-thumb" src={image.dataUrl} alt="" /> : null}
+                    {image ? <AttachmentImage className="note-thumb" file={image} placeholder={<span className="note-thumb" aria-hidden="true" />} /> : null}
                     <span className="card-top">
                       <span className="chip"><i />{revitCategory(log)}</span>
                       <span className="card-date">{formatISO(log.date)}</span>

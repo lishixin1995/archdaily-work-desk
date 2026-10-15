@@ -42,9 +42,11 @@ Every list is kept in `localStorage` and mirrored to the cloud table `app_cloud_
 
 These key names must not change, or saved data will stop loading.
 
+Attached files (screenshots, PDFs, Word files) are not kept inside the notes: localStorage holds only about 5 MB for the whole site, and one cloud request at most 4.5 MB. `src/lib/fileStore.js` keeps each file in this browser's IndexedDB (`archDailyWorkDesk.files`) and in the cloud table as its own rows, `archDailyWorkDesk.file.<id>.<part>`, split into 3 MB parts. A note keeps only each file's name, type, size and part count. Files saved inside notes by older versions are moved out on start, and a file whose upload failed is sent again on the next start.
+
 ## Code layout
 
-- `src/lib/` – storage and cloud sync, dates, task rules, categories, file attachments, moon phases
+- `src/lib/` – storage and cloud sync, dates, task rules, categories, file attachments and their store, moon phases
 - `src/components/` – shared pieces: top menu, drawer, day card, orbit, calendar grid, task sheet, search
 - `src/views/` – one file per page
 - `src/styles/` – the theme and one stylesheet per area

@@ -76,14 +76,14 @@ function mergeValues(remote, local) {
   return remote;
 }
 
-async function loadCloudValue(app, key) {
+export async function loadCloudValue(app, key) {
   const response = await fetch(`/api/cloud-data?app=${encodeURIComponent(app)}&key=${encodeURIComponent(key)}`);
   if (!response.ok) throw new Error('Unable to load cloud data.');
   const payload = await response.json();
   return payload.data;
 }
 
-async function saveCloudValue(app, key, data) {
+export async function saveCloudValue(app, key, data) {
   const response = await fetch('/api/cloud-data', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
